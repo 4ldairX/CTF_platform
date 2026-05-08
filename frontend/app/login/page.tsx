@@ -44,19 +44,30 @@ export default function LoginPage() {
     }
 
     setSubmitting(true);
-    // Simulación de validación de credenciales (include "Validar credenciales")
+    const isAdmin =
+      email.trim().toLowerCase() === "admin" && password === "admin";
+
     console.info("[CyberQuest] Credenciales válidas (simulado)", {
       email,
       passwordLength: password.length,
+      role: isAdmin ? "admin" : "competitor",
     });
 
     window.setTimeout(() => {
       setSubmitting(false);
-      setToast({
-        message: "Acceso concedido. Bienvenido a CyberQuest.",
-        variant: "success",
-      });
-      router.push("/mfa");
+      if (isAdmin) {
+        setToast({
+          message: "Acceso de administrador concedido. OBSIDIAN.ADMIN",
+          variant: "success",
+        });
+        router.push("/admin");
+      } else {
+        setToast({
+          message: "Acceso concedido. Bienvenido a CyberQuest.",
+          variant: "success",
+        });
+        router.push("/mfa");
+      }
     }, 600);
   }
 
@@ -75,9 +86,9 @@ export default function LoginPage() {
         <form noValidate onSubmit={handleSubmit} className="flex flex-col gap-5">
           <Input
             label="Email institucional"
-            type="email"
+            type="text"
             autoComplete="email"
-            placeholder="usuario@emi.edu.bo"
+            placeholder="usuario@emi.edu.bo · admin"
             icon={<Mail size={16} />}
             value={email}
             onChange={(e) => setEmail(e.target.value)}
