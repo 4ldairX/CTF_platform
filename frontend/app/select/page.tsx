@@ -33,40 +33,39 @@ export default function SelectPage() {
       <main className="relative z-10 mx-auto flex max-w-6xl flex-col items-center justify-center px-6 pb-16 pt-10">
         <span className="mb-3 inline-flex items-center gap-2 rounded-full border border-red-500/30 bg-red-500/10 px-3 py-1 font-mono text-[10px] uppercase tracking-[0.32em] text-red-300">
           <span className="h-1.5 w-1.5 animate-pulse-soft rounded-full bg-red-400" />
-          Sesión autorizada · Operativo verificado
+          Sesión autorizada · Usuario verificado
         </span>
         <h1 className="text-center text-3xl font-black tracking-tight text-zinc-50 md:text-5xl">
           Selecciona tu modo
         </h1>
         <p className="mt-3 max-w-xl text-center text-sm text-zinc-500">
-          Cada operativo elige su trinchera. Aprende la teoría desde cero o entra
-          directo al campo de batalla.
+          Aprende la teoría desde cero o entra directo al campo de práctica.
         </p>
 
         <div className="mt-12 grid w-full grid-cols-1 gap-6 md:grid-cols-2">
           <ModeCard
             href="/academy"
             icon={<GraduationCap size={28} />}
-            title="THE ACADEMY"
-            sub="Master the Theory"
-            description="Cursos guiados, mentoría con IA, certificaciones. Construye fundamentos sólidos antes de entrar al campo."
+            title="ACADEMIA"
+            sub="Aprende la teoría"
+            description="Cursos guiados, tutor IA y certificaciones. Construye fundamentos sólidos antes de entrar al campo."
           />
           <ModeCard
             href="/arena"
             icon={<Crosshair size={28} />}
-            title="THE ARENA"
-            sub="Confront the Challenges"
-            description="Despliegue de labs, eventos CTF en vivo, scoreboard. Pon a prueba lo aprendido en escenarios reales."
+            title="ARENA"
+            sub="Enfrenta los retos"
+            description="Laboratorios, eventos CTF en vivo y marcador. Pon a prueba lo aprendido en escenarios reales."
             featured
           />
         </div>
 
         <div className="mt-10 flex flex-col items-center gap-2 text-center text-[10px] uppercase tracking-[0.32em] text-zinc-600">
           <span className="font-mono">
-            Privacy Policy · Terms of Service · Status · Contact
+            Privacidad · Términos · Estado · Contacto
           </span>
           <span className="font-mono">
-            © 2026 CyberQuest · Operating Command // EMI
+            © 2026 CyberQuest · EMI
           </span>
         </div>
       </main>

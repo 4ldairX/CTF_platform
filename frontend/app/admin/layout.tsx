@@ -1,3 +1,4 @@
+import RequireAuth from "@/components/auth/RequireAuth";
 import AdminShell from "@/components/shell/AdminShell";
 
 export default function AdminLayout({
@@ -5,5 +6,9 @@ export default function AdminLayout({
 }: {
   children: React.ReactNode;
 }) {
-  return <AdminShell>{children}</AdminShell>;
+  return (
+    <RequireAuth allowedRoles={["admin", "moderator"]}>
+      <AdminShell>{children}</AdminShell>
+    </RequireAuth>
+  );
 }

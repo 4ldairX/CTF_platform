@@ -2,15 +2,18 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState, type FormEvent } from "react";
+import { useState, useEffect, type FormEvent } from "react";
 import { ArrowRight, KeyRound } from "lucide-react";
 import AuthShell from "@/components/auth/AuthShell";
 import Button from "@/components/ui/Button";
 import Toast from "@/components/ui/Toast";
 import type { ToastVariant } from "@/components/ui/Toast";
+import { auth as apiAuth, setTokens, ApiError } from "@/lib/api";
+import { useAuth, redirectByRole } from "@/lib/auth";
 
 export default function MfaPage() {
   const router = useRouter();
+  const { loadUser } = useAuth();
   const [code, setCode] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -19,24 +22,52 @@ export default function MfaPage() {
     variant: ToastVariant;
   } | null>(null);
 
-  function handleSubmit(e: FormEvent<HTMLFormElement>) {
+  // On mount: redirect to login if there is no temp_token
+  useEffect(() => {
+    const tempToken = sessionStorage.getItem("cq_mfa_temp");
+    if (!tempToken) {
+      router.push("/login");
+    }
+  }, [router]);
+
+  async function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     if (code.replace(/\s/g, "").length < 6) {
       setError("El código debe tener 6 dígitos.");
-      setToast({
-        message: "Código incompleto.",
-        variant: "error",
-      });
+      setToast({ message: "Código incompleto.", variant: "error" });
       return;
     }
     setError(null);
     setSubmitting(true);
-    console.info("[CyberQuest] MFA válido (simulado)", { code });
-    window.setTimeout(() => {
-      setSubmitting(false);
+
+    try {
+      const tempToken = sessionStorage.getItem("cq_mfa_temp");
+      if (!tempToken) {
+        router.push("/login");
+        return;
+      }
+
+      const tokens = await apiAuth.mfaValidate(tempToken, code);
+      setTokens(tokens.access_token, tokens.refresh_token);
+      sessionStorage.removeItem("cq_mfa_temp");
+
+      const user = await loadUser();
       setToast({ message: "Identidad verificada.", variant: "success" });
-      router.push("/select");
-    }, 600);
+      if (user) {
+        redirectByRole(user.role, router);
+      } else {
+        router.push("/login");
+      }
+    } catch (err) {
+      if (err instanceof ApiError) {
+        setError("Código incorrecto.");
+        setToast({ message: "Código incorrecto. Intenta de nuevo.", variant: "error" });
+      } else {
+        setToast({ message: "Error de conexión. Intenta de nuevo.", variant: "error" });
+      }
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   function update(value: string) {
@@ -88,21 +119,10 @@ export default function MfaPage() {
           </Button>
 
           <div className="flex flex-col items-center gap-2 pt-1 text-sm">
-            <button
-              type="button"
-              onClick={() =>
-                setToast({
-                  message: "Nuevo código enviado a tu autenticador.",
-                  variant: "success",
-                })
-              }
-              className="text-zinc-400 transition hover:text-zinc-200"
-            >
-              ¿No recibiste el código?{" "}
-              <span className="font-medium text-red-500 hover:text-red-400">
-                Reenviar el código
-              </span>
-            </button>
+            <p className="text-center text-xs text-zinc-500">
+              El código se actualiza cada 30 segundos en tu aplicación
+              autenticadora.
+            </p>
             <Link
               href="/login"
               className="text-xs uppercase tracking-[0.2em] text-zinc-600 hover:text-zinc-400"

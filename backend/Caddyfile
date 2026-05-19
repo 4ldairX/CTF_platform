@@ -1,0 +1,53 @@
+# Reverse proxy with automatic HTTPS via Let's Encrypt.
+# Set DOMAIN in .env (or compose env) to your real domain.
+# For local dev, use a self-signed cert by setting DOMAIN=cyberquest.local
+# and adding it to /etc/hosts pointing to 127.0.0.1.
+
+{$DOMAIN} {
+    # Security headers
+    header {
+        Strict-Transport-Security "max-age=31536000; includeSubDomains"
+        X-Content-Type-Options "nosniff"
+        X-Frame-Options "DENY"
+        Referrer-Policy "strict-origin-when-cross-origin"
+        Permissions-Policy "geolocation=(), microphone=(), camera=()"
+        -Server
+    }
+
+    # API
+    handle /api/* {
+        uri strip_prefix /api
+        reverse_proxy api:8000
+    }
+
+    # Backward compatibility (until frontend is updated to use /api prefix)
+    handle /auth/* {
+        reverse_proxy api:8000
+    }
+    handle /admin/* {
+        reverse_proxy api:8000
+    }
+    handle /challenges/* {
+        reverse_proxy api:8000
+    }
+    handle /teams/* {
+        reverse_proxy api:8000
+    }
+    handle /events/* {
+        reverse_proxy api:8000
+    }
+    handle /leaderboard/* {
+        reverse_proxy api:8000
+    }
+    handle /health {
+        reverse_proxy api:8000
+    }
+
+    # Frontend (Next.js production build) — run separately or add a "frontend" service
+    handle {
+        reverse_proxy frontend:3000
+    }
+
+    # Gzip compression
+    encode gzip
+}

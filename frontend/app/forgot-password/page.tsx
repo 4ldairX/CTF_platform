@@ -1,44 +1,8 @@
-"use client";
-
 import Link from "next/link";
-import { useState, type FormEvent } from "react";
-import { ArrowLeft, ArrowRight, Mail } from "lucide-react";
+import { ArrowLeft, Mail, ShieldAlert } from "lucide-react";
 import AuthShell from "@/components/auth/AuthShell";
-import Input from "@/components/ui/Input";
-import Button from "@/components/ui/Button";
-import Toast from "@/components/ui/Toast";
-
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export default function ForgotPasswordPage() {
-  const [email, setEmail] = useState("");
-  const [error, setError] = useState<string | undefined>();
-  const [submitting, setSubmitting] = useState(false);
-  const [sent, setSent] = useState(false);
-  const [toast, setToast] = useState<string | null>(null);
-
-  function handleSubmit(e: FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    if (!email.trim()) {
-      setError("Ingresa tu correo institucional.");
-      return;
-    }
-    if (!EMAIL_RE.test(email.trim())) {
-      setError("Formato de correo inválido.");
-      return;
-    }
-
-    setError(undefined);
-    setSubmitting(true);
-    console.info("[CyberQuest] Solicitud de recuperación (simulada)", email);
-
-    window.setTimeout(() => {
-      setSubmitting(false);
-      setSent(true);
-      setToast("Enlace de recuperación enviado a tu correo.");
-    }, 700);
-  }
-
   return (
     <AuthShell>
       <div className="flex flex-col gap-6">
@@ -47,52 +11,37 @@ export default function ForgotPasswordPage() {
             Recuperar contraseña
           </h2>
           <p className="text-sm text-zinc-500">
-            Te enviaremos un enlace seguro para restablecer tu acceso.
+            Por motivos de seguridad la recuperación se hace de forma manual.
           </p>
         </header>
 
-        {sent ? (
-          <div className="flex flex-col gap-4">
-            <p className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm text-emerald-200">
-              Si el correo está registrado en CyberQuest, recibirás un enlace de
-              recuperación en los próximos minutos.
-            </p>
-            <Link
-              href="/login"
-              className="inline-flex items-center gap-2 text-sm text-zinc-400 hover:text-zinc-200"
-            >
-              <ArrowLeft size={14} /> Volver al inicio de sesión
-            </Link>
+        <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-4 text-sm text-amber-100">
+          <div className="flex items-start gap-2">
+            <ShieldAlert size={16} className="mt-0.5 shrink-0" />
+            <div>
+              <p className="font-semibold">¿Olvidaste tu contraseña?</p>
+              <p className="mt-1 text-amber-100/90">
+                Contacta al administrador de la plataforma para restablecerla.
+                El reinicio automático por correo aún no está disponible.
+              </p>
+            </div>
           </div>
-        ) : (
-          <form noValidate onSubmit={handleSubmit} className="flex flex-col gap-5">
-            <Input
-              label="Email institucional"
-              type="email"
-              icon={<Mail size={16} />}
-              placeholder="usuario@emi.edu.bo"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              error={error}
-              required
-            />
-            <Button type="submit" fullWidth disabled={submitting}>
-              {submitting ? "Enviando..." : "Enviar enlace"}
-              {!submitting && <ArrowRight size={14} />}
-            </Button>
-            <Link
-              href="/login"
-              className="inline-flex items-center justify-center gap-2 text-sm text-zinc-400 hover:text-zinc-200"
-            >
-              <ArrowLeft size={14} /> Volver al inicio de sesión
-            </Link>
-          </form>
-        )}
-      </div>
+        </div>
 
-      {toast ? (
-        <Toast message={toast} variant="success" onClose={() => setToast(null)} />
-      ) : null}
+        <a
+          href="mailto:soporte@cyberquest.local"
+          className="inline-flex items-center justify-center gap-2 rounded-md border border-zinc-800 bg-zinc-900/60 px-4 py-2.5 text-sm font-medium text-zinc-200 hover:border-red-500/40 hover:text-red-300"
+        >
+          <Mail size={14} /> soporte@cyberquest.local
+        </a>
+
+        <Link
+          href="/login"
+          className="inline-flex items-center justify-center gap-2 text-sm text-zinc-400 hover:text-zinc-200"
+        >
+          <ArrowLeft size={14} /> Volver al inicio de sesión
+        </Link>
+      </div>
     </AuthShell>
   );
 }

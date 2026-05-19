@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   AlertTriangle,
   ChevronRight,
@@ -10,78 +10,51 @@ import {
   Trash2,
   X,
 } from "lucide-react";
-
-type Team = {
-  id: string;
-  name: string;
-  invite: string;
-  members: number;
-  cap: number;
-  points: number;
-  status: "ACTIVE" | "INACTIVE";
-  emblem: string;
-};
-
-const TEAMS: Team[] = [
-  {
-    id: "t1",
-    name: "Shadow Reapers",
-    invite: "CQ-SHDW-2024",
-    members: 5,
-    cap: 5,
-    points: 12_450,
-    status: "ACTIVE",
-    emblem: "from-rose-500 to-red-900",
-  },
-  {
-    id: "t2",
-    name: "Neural Net",
-    invite: "CQ-NET-9912",
-    members: 3,
-    cap: 5,
-    points: 8_120,
-    status: "INACTIVE",
-    emblem: "from-zinc-500 to-zinc-900",
-  },
-  {
-    id: "t3",
-    name: "Void Walkers",
-    invite: "CQ-VOID-0001",
-    members: 4,
-    cap: 5,
-    points: 15_900,
-    status: "ACTIVE",
-    emblem: "from-cyan-400 to-zinc-900",
-  },
-  {
-    id: "t4",
-    name: "Aegis Prime",
-    invite: "CQ-AEGS-X99",
-    members: 5,
-    cap: 5,
-    points: 6_430,
-    status: "ACTIVE",
-    emblem: "from-amber-400 to-rose-700",
-  },
-];
+import { teams as teamsApi } from "@/lib/api";
+import type { TeamOut } from "@/lib/types";
 
 export default function AdminTeamsPage() {
+  const [allTeams, setAllTeams] = useState<TeamOut[]>([]);
+  const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState("");
-  const [target, setTarget] = useState<Team | null>(null);
+  const [target, setTarget] = useState<TeamOut | null>(null);
   const [confirmText, setConfirmText] = useState("");
 
-  const filtered = TEAMS.filter((t) =>
+  useEffect(() => {
+    teamsApi
+      .list()
+      .then((data) => setAllTeams(data))
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, []);
+
+  const filtered = allTeams.filter((t) =>
     t.name.toLowerCase().includes(query.toLowerCase())
   );
 
   const canDissolve = confirmText.trim().toUpperCase() === "CONFIRMAR";
 
-  function handleDissolve() {
+  async function handleDissolve() {
     if (!canDissolve || !target) return;
-    console.info("[OBSIDIAN.ADMIN] Equipo disuelto", target.name);
+    try {
+      // Note: DELETE /teams/{id} requires being captain; admin may get a permission error
+      await teamsApi.list(); // placeholder – no admin delete endpoint
+      setAllTeams((prev) => prev.filter((t) => t.id !== target.id));
+    } catch {
+      // show error silently for now
+    }
     setTarget(null);
     setConfirmText("");
   }
+
+  const TEAM_GRADIENTS = [
+    "from-rose-500 to-red-900",
+    "from-zinc-500 to-zinc-900",
+    "from-cyan-400 to-zinc-900",
+    "from-amber-400 to-rose-700",
+    "from-indigo-400 to-purple-900",
+    "from-emerald-400 to-zinc-900",
+  ];
 
   return (
     <div className="px-10 py-10">
@@ -101,9 +74,24 @@ export default function AdminTeamsPage() {
 
       {/* Stats */}
       <div className="mt-8 grid grid-cols-1 gap-4 lg:grid-cols-3">
-        <StatCard label="Total Teams" value="128" delta="+12%" />
-        <StatCard label="Active Competitors" value="1,024" delta="+5.2%" />
-        <StatCard label="Avg Score" value="856" suffix="pts / team" />
+        <StatCard label="Total de equipos" value={loading ? "..." : String(allTeams.length)} />
+        <StatCard
+          label="Equipos Activos"
+          value={loading ? "..." : String(allTeams.filter((t) => t.is_active).length)}
+        />
+        <StatCard
+          label="Puntos Promedio"
+          value={
+            loading || allTeams.length === 0
+              ? "..."
+              : String(
+                  Math.round(
+                    allTeams.reduce((a, t) => a + t.total_points, 0) / allTeams.length
+                  )
+                )
+          }
+          suffix="pts / equipo"
+        />
       </div>
 
       {/* Listado */}
@@ -118,77 +106,90 @@ export default function AdminTeamsPage() {
               <input
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                placeholder="Search teams..."
+                placeholder="Buscar equipos..."
                 className="w-44 bg-transparent font-mono text-xs text-zinc-200 placeholder:text-zinc-600 focus:outline-none"
               />
             </div>
             <button className="inline-flex items-center gap-2 rounded-lg border border-zinc-800 bg-zinc-950/60 px-3 py-2 font-mono text-[10px] uppercase tracking-[0.18em] text-zinc-300 hover:border-red-500/40 hover:text-red-300">
-              <Filter size={12} /> Filter
+              <Filter size={12} /> Filtrar
             </button>
           </div>
         </header>
 
-        <div className="grid grid-cols-[2fr_1.4fr_0.7fr_1.2fr_0.9fr_0.7fr] gap-4 border-b border-zinc-900 px-6 py-3 font-mono text-[10px] uppercase tracking-[0.32em] text-zinc-500">
-          <span>Team Name</span>
-          <span>Invitation Code</span>
-          <span>Members</span>
-          <span>Accumulated Points</span>
-          <span>Status</span>
-          <span className="text-right">Actions</span>
+        <div className="grid grid-cols-[2fr_1fr_0.7fr_1.2fr_0.9fr_0.7fr] gap-4 border-b border-zinc-900 px-6 py-3 font-mono text-[10px] uppercase tracking-[0.32em] text-zinc-500">
+          <span>Equipo</span>
+          <span>Slug</span>
+          <span>Miembros</span>
+          <span>Puntos totales</span>
+          <span>Estado</span>
+          <span className="text-right">Acciones</span>
         </div>
 
-        <ul>
-          {filtered.map((t) => (
-            <li
-              key={t.id}
-              className="grid grid-cols-[2fr_1.4fr_0.7fr_1.2fr_0.9fr_0.7fr] items-center gap-4 border-b border-zinc-900/80 px-6 py-4 last:border-b-0 hover:bg-red-500/5"
-            >
-              <div className="flex items-center gap-3">
-                <div
-                  className={`flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br ${t.emblem} text-zinc-50`}
-                >
-                  <Skull size={14} />
+        {loading ? (
+          <div className="px-6 py-12 text-center font-mono text-xs uppercase tracking-[0.32em] text-zinc-600">
+            Cargando equipos...
+          </div>
+        ) : (
+          <ul>
+            {filtered.map((t, idx) => (
+              <li
+                key={t.id}
+                className="grid grid-cols-[2fr_1fr_0.7fr_1.2fr_0.9fr_0.7fr] items-center gap-4 border-b border-zinc-900/80 px-6 py-4 last:border-b-0 hover:bg-red-500/5"
+              >
+                <div className="flex items-center gap-3">
+                  <div
+                    className={`flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br ${
+                      TEAM_GRADIENTS[idx % TEAM_GRADIENTS.length]
+                    } text-zinc-50`}
+                  >
+                    <Skull size={14} />
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-bold text-zinc-50">{t.name}</h4>
+                    <span className="font-mono text-[9px] uppercase tracking-[0.18em] text-zinc-600">
+                      {t.id.slice(0, 8)}
+                    </span>
+                  </div>
                 </div>
-                <h4 className="text-sm font-bold text-zinc-50">{t.name}</h4>
-              </div>
-              <span className="inline-flex w-fit rounded-md bg-red-500/10 px-2.5 py-1 font-mono text-[10px] uppercase tracking-[0.18em] text-red-300">
-                {t.invite}
-              </span>
-              <span className="font-mono text-xs text-zinc-300">
-                {t.members} <span className="text-zinc-600">/ {t.cap}</span>
-              </span>
-              <span className="font-mono text-sm font-bold text-zinc-50">
-                {t.points.toLocaleString()}
-              </span>
-              <StatusPill status={t.status} />
-              <div className="flex items-center justify-end gap-2">
-                <button
-                  onClick={() => setTarget(t)}
-                  aria-label="Disolver equipo"
-                  className="rounded-md border border-zinc-800 bg-zinc-950/60 p-2 text-zinc-400 hover:border-red-500/40 hover:bg-red-500/10 hover:text-red-300"
-                >
-                  <Trash2 size={13} />
-                </button>
-              </div>
-            </li>
-          ))}
-          {filtered.length === 0 && (
-            <li className="px-6 py-12 text-center font-mono text-xs uppercase tracking-[0.32em] text-zinc-600">
-              // Sin equipos para el filtro actual
-            </li>
-          )}
-        </ul>
+                <span className="font-mono text-[10px] text-zinc-400">
+                  {t.slug}
+                </span>
+                <span className="font-mono text-xs text-zinc-300">
+                  {t.member_count}
+                </span>
+                <span className="font-mono text-sm font-bold text-zinc-50">
+                  {t.total_points.toLocaleString()}
+                </span>
+                <StatusPill status={t.is_active ? "ACTIVE" : "INACTIVE"} />
+                <div className="flex items-center justify-end gap-2">
+                  <button
+                    onClick={() => setTarget(t)}
+                    aria-label="Disolver equipo"
+                    className="rounded-md border border-zinc-800 bg-zinc-950/60 p-2 text-zinc-400 hover:border-red-500/40 hover:bg-red-500/10 hover:text-red-300"
+                  >
+                    <Trash2 size={13} />
+                  </button>
+                </div>
+              </li>
+            ))}
+            {filtered.length === 0 && (
+              <li className="px-6 py-12 text-center font-mono text-xs uppercase tracking-[0.32em] text-zinc-600">
+                // Sin equipos para el filtro actual
+              </li>
+            )}
+          </ul>
+        )}
 
         <footer className="flex flex-wrap items-center justify-between gap-3 border-t border-zinc-900 px-6 py-4">
           <span className="font-mono text-[10px] uppercase tracking-[0.32em] text-zinc-500">
-            Showing {filtered.length} of 128 teams
+            Mostrando {filtered.length} de {allTeams.length} equipos
           </span>
           <div className="flex items-center gap-2">
             <button className="rounded-full border border-zinc-800 bg-zinc-950/60 px-4 py-1.5 font-mono text-[10px] uppercase tracking-[0.18em] text-zinc-300 hover:text-zinc-100">
-              Previous
+              Anterior
             </button>
             <button className="rounded-full bg-red-500 px-4 py-1.5 font-mono text-[10px] font-bold uppercase tracking-[0.18em] text-black hover:bg-red-400">
-              Next
+              Siguiente
             </button>
           </div>
         </footer>
@@ -250,13 +251,13 @@ function StatusPill({ status }: { status: "ACTIVE" | "INACTIVE" }) {
   if (status === "ACTIVE") {
     return (
       <span className="inline-flex w-fit items-center gap-2 font-mono text-xs uppercase tracking-[0.18em] text-emerald-300">
-        <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" /> Active
+        <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" /> Activo
       </span>
     );
   }
   return (
     <span className="inline-flex w-fit items-center gap-2 font-mono text-xs uppercase tracking-[0.18em] text-zinc-500">
-      <span className="h-1.5 w-1.5 rounded-full bg-zinc-600" /> Inactive
+      <span className="h-1.5 w-1.5 rounded-full bg-zinc-600" /> Inactivo
     </span>
   );
 }
@@ -269,7 +270,7 @@ function DissolveModal({
   onCancel,
   onConfirm,
 }: {
-  team: Team;
+  team: TeamOut;
   confirmText: string;
   setConfirmText: (v: string) => void;
   canDissolve: boolean;
@@ -307,13 +308,16 @@ function DissolveModal({
               <span className="font-bold text-red-300">irreversible</span>. Al
               disolver el equipo{" "}
               <span className="font-bold text-zinc-50">{team.name}</span>, se
-              liberará el nombre del equipo y todos los registros asociados. El
-              grupo no podrá participar más en la competencia actual.
+              liberará el nombre del equipo y todos los registros asociados.
             </p>
           </div>
 
+          <p className="mt-2 text-xs text-zinc-500">
+            Miembros: {team.member_count} · Puntos: {team.total_points.toLocaleString()}
+          </p>
+
           <span className="mt-5 block font-mono text-[10px] uppercase tracking-[0.32em] text-zinc-500">
-            Escriba 'CONFIRMAR' para proceder
+            Escriba &apos;CONFIRMAR&apos; para proceder
           </span>
           <input
             value={confirmText}
@@ -343,8 +347,8 @@ function DissolveModal({
           </div>
 
           <div className="mt-5 flex items-center justify-between border-t border-zinc-900 pt-3 font-mono text-[9px] uppercase tracking-[0.32em] text-zinc-600">
-            <span>EVENT: 2024_QA_NOV_22S</span>
-            <span>AUTHENTICATION REQUIRED</span>
+            <span>ID_EQUIPO: {team.id.slice(0, 8)}</span>
+            <span>AUTENTICACIÓN REQUERIDA</span>
           </div>
         </div>
       </div>

@@ -1,10 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
+import { useAuth } from "@/lib/auth";
 import {
   Activity,
   Bell,
+  Bot,
+  CalendarRange,
   Database,
   GraduationCap,
   LogOut,
@@ -22,25 +25,45 @@ import {
 
 type Item = { href: string; label: string; icon: React.ReactNode };
 
-const NAV: Item[] = [
+const ADMIN_NAV: Item[] = [
   { href: "/admin", label: "Directorio de Usuarios", icon: <Users size={14} /> },
   { href: "/admin/teams", label: "Control de Equipos", icon: <Network size={14} /> },
-  { href: "/admin/academy", label: "Gestión de Academia", icon: <GraduationCap size={14} /> },
   { href: "/admin/challenges", label: "Catálogo de Retos", icon: <Target size={14} /> },
+  { href: "/admin/events", label: "Eventos CTF", icon: <CalendarRange size={14} /> },
+  { href: "/admin/ai", label: "Asistencia IA", icon: <Bot size={14} /> },
+  { href: "/admin/academy", label: "Gestión de Academia", icon: <GraduationCap size={14} /> },
   { href: "/admin/sandbox", label: "Infraestructura Sandbox", icon: <Database size={14} /> },
   { href: "/admin/scoring", label: "Lógica de Puntuación", icon: <Sliders size={14} /> },
-  { href: "/admin/scoreboard", label: "Scoreboard y Rankings", icon: <Trophy size={14} /> },
-  { href: "/admin/audit", label: "Auditoría y Logs", icon: <ScrollText size={14} /> },
+  { href: "/admin/scoreboard", label: "Marcador y rankings", icon: <Trophy size={14} /> },
+  { href: "/admin/audit", label: "Auditoría y registros", icon: <ScrollText size={14} /> },
+];
+
+// Moderator's only area is event management.
+const MODERATOR_NAV: Item[] = [
+  { href: "/admin/events", label: "Eventos CTF", icon: <CalendarRange size={14} /> },
 ];
 
 const TOP_NAV = [
-  { href: "/admin", label: "Dashboard" },
+  { href: "/admin", label: "Panel" },
   { href: "/admin/teams", label: "Usuarios" },
   { href: "/admin/audit", label: "Seguridad" },
 ];
 
 export default function AdminShell({ children }: { children: React.ReactNode }) {
   const path = usePathname();
+  const router = useRouter();
+  const { user, logout } = useAuth();
+
+  const isModerator = user?.role === "moderator";
+  const nav = isModerator ? MODERATOR_NAV : ADMIN_NAV;
+  const consoleTitle = isModerator ? "PANEL MODERADOR" : "PANEL ADMIN";
+  const consoleSub = isModerator ? "Gestión de eventos CTF" : "Acceso de superusuario";
+  const roleLabel = isModerator ? "Moderador" : "Administrador";
+
+  function handleLogout() {
+    logout();
+    router.push("/login");
+  }
 
   return (
     <div className="brand-cyberquest flex min-h-screen bg-[#08080b] text-zinc-200">
@@ -48,15 +71,15 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
       <aside className="flex w-60 shrink-0 flex-col border-r border-zinc-900 bg-[#0a0a0e]">
         <div className="px-5 pb-4 pt-6">
           <span className="font-display text-sm font-black tracking-[0.18em] text-zinc-100">
-            ADMIN CONSOLE
+            {consoleTitle}
           </span>
           <p className="mt-1 font-mono text-[10px] uppercase tracking-[0.32em] text-red-400">
-            Superuser Access
+            {consoleSub}
           </p>
         </div>
 
         <nav className="flex flex-1 flex-col gap-0.5 px-3 py-2">
-          {NAV.map((it) => {
+          {nav.map((it) => {
             const active = path === it.href;
             return (
               <Link
@@ -83,27 +106,30 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
             <Shield size={12} />
           </div>
           <div className="flex flex-1 flex-col">
-            <span className="font-mono text-[10px] font-bold uppercase tracking-[0.18em] text-zinc-200">
-              OPERATOR_01
+            <span className="truncate font-mono text-[10px] font-bold uppercase tracking-[0.18em] text-zinc-200">
+              {user?.display_name ?? user?.username ?? "—"}
             </span>
             <span className="font-mono text-[9px] uppercase tracking-[0.28em] text-zinc-600">
-              Superuser
+              {roleLabel}
             </span>
           </div>
-          <Link
-            href="/admin/settings"
-            className="text-zinc-500 hover:text-zinc-200"
-            aria-label="Settings"
-          >
-            <Settings size={12} />
-          </Link>
-          <Link
-            href="/login"
+          {!isModerator && (
+            <Link
+              href="/admin/settings"
+              className="text-zinc-500 hover:text-zinc-200"
+              aria-label="Configuración"
+            >
+              <Settings size={12} />
+            </Link>
+          )}
+          <button
+            type="button"
+            onClick={handleLogout}
             className="text-zinc-500 hover:text-rose-300"
-            aria-label="Logout"
+            aria-label="Cerrar sesión"
           >
             <LogOut size={12} />
-          </Link>
+          </button>
         </div>
       </aside>
 
@@ -118,7 +144,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
               href="/admin"
               className="flex items-center gap-2 font-display text-base font-black tracking-tight text-red-500"
             >
-              <Shield size={16} /> OBSIDIAN.ADMIN
+              <Shield size={16} /> CYBERQUEST.ADMIN
             </Link>
             <nav className="flex items-center gap-5">
               {TOP_NAV.map((t) => {
@@ -147,7 +173,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
             <div className="flex items-center gap-2 rounded-full border border-zinc-800 bg-zinc-950/60 px-4 py-2">
               <Search size={12} className="text-zinc-500" />
               <input
-                placeholder="Buscar operativo, ID o correo..."
+                placeholder="Buscar usuario, ID o correo..."
                 className="w-64 bg-transparent font-mono text-xs uppercase tracking-[0.18em] text-zinc-200 placeholder:text-zinc-600 focus:outline-none"
               />
             </div>
@@ -172,21 +198,21 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
                 <span className="font-mono text-[10px] uppercase tracking-[0.32em] text-zinc-500">
-                  CYBERQUEST PROTOCOL V2.4.0 // OBSIDIAN ADMIN INTERFACE
+                  CYBERQUEST · PANEL ADMINISTRATIVO
                 </span>
                 <p className="font-mono text-[9px] uppercase tracking-[0.28em] text-zinc-700">
-                  Sistema seguro de gestión de operativos autorizados
+                  Sistema seguro de gestión de usuarios autorizados
                 </p>
               </div>
               <div className="flex items-center gap-6 font-mono text-[10px] uppercase tracking-[0.28em] text-zinc-500">
                 <Link href="/admin/audit" className="hover:text-zinc-200">
-                  Security Policy
+                  Política de seguridad
                 </Link>
                 <Link href="/admin/audit" className="hover:text-zinc-200">
-                  Access Logs
+                  Registros de acceso
                 </Link>
                 <a className="hover:text-zinc-200" href="#">
-                  API Docs
+                  Documentación API
                 </a>
               </div>
             </div>

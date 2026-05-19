@@ -1,9 +1,14 @@
-import CyberQuestShell from "@/components/shell/CyberQuestShell";
+import RequireAuth from "@/components/auth/RequireAuth";
+import ArenaShell from "@/components/shell/ArenaShell";
 
 export default function ProfileLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  return <CyberQuestShell>{children}</CyberQuestShell>;
+  return (
+    <RequireAuth allowedRoles={["competitor"]}>
+      <ArenaShell>{children}</ArenaShell>
+    </RequireAuth>
+  );
 }

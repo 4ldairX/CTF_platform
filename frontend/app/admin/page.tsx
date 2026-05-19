@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   ChevronDown,
   Download,
@@ -13,89 +13,139 @@ import {
   UserPlus,
   Users,
 } from "lucide-react";
+import { admin as adminApi } from "@/lib/api";
+import type { AdminUserOut, Role } from "@/lib/types";
 
-type Role = "ADMINISTRADOR" | "INSTRUCTOR" | "COMPETIDOR";
-type Status = "ACTIVE" | "BLOCKED";
+type RoleFilter = Role | "ALL";
 
-type User = {
-  id: string;
-  name: string;
-  code: string;
-  email: string;
-  role: Role;
-  status: Status;
-  avatarColor: string;
+const ROLE_LABEL: Record<string, string> = {
+  admin: "Administrador",
+  instructor: "Instructor",
+  moderator: "Moderador",
+  competitor: "Competidor",
 };
 
-const USERS: User[] = [
-  {
-    id: "u1",
-    name: "Alex Mercer",
-    code: "CQ-902-K",
-    email: "a.mercer@cyberquest.sh",
-    role: "ADMINISTRADOR",
-    status: "ACTIVE",
-    avatarColor: "from-rose-400 to-red-700",
-  },
-  {
-    id: "u2",
-    name: "Sarah Connor",
-    code: "CQ-104-M",
-    email: "s.connor@cyberquest.sh",
-    role: "INSTRUCTOR",
-    status: "ACTIVE",
-    avatarColor: "from-cyan-300 to-cyan-700",
-  },
-  {
-    id: "u3",
-    name: "Deckard Shaw",
-    code: "CQ-711-X",
-    email: "d.shaw@ext.corp",
-    role: "COMPETIDOR",
-    status: "BLOCKED",
-    avatarColor: "from-zinc-400 to-zinc-800",
-  },
-  {
-    id: "u4",
-    name: "Ada Bishop",
-    code: "CQ-503-A",
-    email: "a.bishop@cyberquest.sh",
-    role: "INSTRUCTOR",
-    status: "ACTIVE",
-    avatarColor: "from-amber-300 to-rose-600",
-  },
-  {
-    id: "u5",
-    name: "Kael Ortega",
-    code: "CQ-228-T",
-    email: "k.ortega@cyberquest.sh",
-    role: "COMPETIDOR",
-    status: "ACTIVE",
-    avatarColor: "from-emerald-300 to-emerald-700",
-  },
+const ROLE_COLORS: Record<string, string> = {
+  admin: "bg-red-500/15 text-red-300 border-red-500/30",
+  instructor: "bg-zinc-800 text-zinc-300 border-zinc-700",
+  moderator: "bg-amber-500/15 text-amber-300 border-amber-500/30",
+  competitor: "bg-zinc-900 text-zinc-400 border-zinc-800",
+};
+
+const AVATAR_GRADIENTS = [
+  "from-rose-400 to-red-700",
+  "from-cyan-300 to-cyan-700",
+  "from-zinc-400 to-zinc-800",
+  "from-amber-300 to-rose-600",
+  "from-emerald-300 to-emerald-700",
+  "from-indigo-400 to-purple-700",
 ];
 
-const STATS = [
-  { label: "Total Usuarios", value: "1,284", delta: "+12%", deltaColor: "text-emerald-400" },
-  { label: "Administradores", value: "12", delta: null },
-  { label: "Instructores", value: "48", delta: null },
-  { label: "Accesos Bloqueados", value: "07", delta: null, accent: "text-red-400" },
-];
+type AdminStats = {
+  total_users: number;
+  total_challenges: number;
+  total_teams: number;
+  total_solves: number;
+  role_counts: {
+    admin: number;
+    instructor: number;
+    moderator: number;
+    competitor: number;
+  };
+};
 
 export default function AdminDashboardPage() {
   const [query, setQuery] = useState("");
-  const [roleFilter, setRoleFilter] = useState<Role | "ALL">("ALL");
+  const [roleFilter, setRoleFilter] = useState<RoleFilter>("ALL");
   const [page, setPage] = useState(1);
+  const [stats, setStats] = useState<AdminStats | null>(null);
+  const [users, setUsers] = useState<AdminUserOut[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const filtered = USERS.filter((u) => {
+  useEffect(() => {
+    async function load() {
+      try {
+        const [s, u] = await Promise.all([adminApi.stats(), adminApi.users()]);
+        setStats(s);
+        setUsers(u);
+      } catch {
+        // ignore errors
+      } finally {
+        setLoading(false);
+      }
+    }
+    load();
+  }, []);
+
+  async function handleChangeRole(userId: string, newRole: string) {
+    try {
+      const updated = await adminApi.updateUser(userId, { role: newRole });
+      setUsers((prev) => prev.map((u) => (u.id === userId ? updated : u)));
+    } catch {
+      // ignore
+    }
+  }
+
+  async function handleToggleActive(userId: string, currentActive: boolean) {
+    try {
+      const updated = await adminApi.updateUser(userId, {
+        is_active: !currentActive,
+      });
+      setUsers((prev) => prev.map((u) => (u.id === userId ? updated : u)));
+    } catch {
+      // ignore
+    }
+  }
+
+  async function handleDeleteUser(userId: string) {
+    if (!confirm("¿Eliminar este usuario? Esta acción es irreversible.")) return;
+    try {
+      await adminApi.deleteUser(userId);
+      setUsers((prev) => prev.filter((u) => u.id !== userId));
+    } catch {
+      // ignore
+    }
+  }
+
+  const filtered = users.filter((u) => {
     const matchesQ =
       !query ||
-      u.name.toLowerCase().includes(query.toLowerCase()) ||
+      u.username.toLowerCase().includes(query.toLowerCase()) ||
       u.email.toLowerCase().includes(query.toLowerCase()) ||
-      u.code.toLowerCase().includes(query.toLowerCase());
+      u.id.toLowerCase().includes(query.toLowerCase());
     const matchesR = roleFilter === "ALL" || u.role === roleFilter;
     return matchesQ && matchesR;
   });
+
+  const STATS_CARDS = stats
+    ? [
+        {
+          label: "Total de usuarios",
+          value: String(stats.total_users),
+          accent: undefined,
+        },
+        {
+          label: "Retos",
+          value: String(stats.total_challenges),
+          accent: undefined,
+        },
+        {
+          label: "Equipos",
+          value: String(stats.total_teams),
+          accent: undefined,
+        },
+        {
+          label: "Soluciones totales",
+          value: String(stats.total_solves),
+          accent: undefined,
+        },
+      ]
+    : [
+        { label: "Total de usuarios", value: "...", accent: undefined },
+        { label: "Retos", value: "...", accent: undefined },
+        { label: "Equipos", value: "...", accent: undefined },
+        { label: "Soluciones totales", value: "...", accent: undefined },
+      ];
 
   return (
     <div className="px-10 py-10">
@@ -103,7 +153,7 @@ export default function AdminDashboardPage() {
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <h1 className="font-display text-4xl font-black tracking-tight text-zinc-50">
-            Gestión Maestra de Operativos
+            Gestión de usuarios
           </h1>
           <p className="mt-2 max-w-xl text-sm text-zinc-500">
             Panel central de jerarquía, accesos y monitoreo de cuentas
@@ -116,35 +166,48 @@ export default function AdminDashboardPage() {
 
       {/* Stats */}
       <div className="mt-8 grid grid-cols-2 gap-4 lg:grid-cols-4">
-        {STATS.map((s) => (
+        {STATS_CARDS.map((s) => (
           <article
             key={s.label}
             className="rounded-2xl border border-zinc-800 bg-zinc-900/40 px-6 py-5"
           >
-            <span
-              className={`font-mono text-[10px] uppercase tracking-[0.32em] ${
-                s.accent ?? "text-zinc-500"
-              }`}
-            >
+            <span className="font-mono text-[10px] uppercase tracking-[0.32em] text-zinc-500">
               {s.label}
             </span>
             <div className="mt-3 flex items-end gap-2">
-              <span
-                className={`font-display text-4xl font-black tracking-tight ${
-                  s.accent ?? "text-zinc-50"
-                }`}
-              >
+              <span className="font-display text-4xl font-black tracking-tight text-zinc-50">
                 {s.value}
               </span>
-              {s.delta && (
-                <span className={`pb-1 font-mono text-xs ${s.deltaColor}`}>
-                  {s.delta}
-                </span>
-              )}
             </div>
           </article>
         ))}
       </div>
+
+      {/* Role counts */}
+      {stats && (
+        <div className="mt-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
+          {(
+            [
+              { key: "admin", label: "Admins" },
+              { key: "instructor", label: "Instructores" },
+              { key: "moderator", label: "Moderadores" },
+              { key: "competitor", label: "Competidores" },
+            ] as const
+          ).map(({ key, label }) => (
+            <div
+              key={key}
+              className="flex items-center justify-between rounded-xl border border-zinc-800 bg-zinc-900/40 px-4 py-3"
+            >
+              <span className="font-mono text-[10px] uppercase tracking-[0.28em] text-zinc-500">
+                {label}
+              </span>
+              <span className="font-mono text-sm font-bold text-zinc-100">
+                {stats.role_counts[key]}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* Filters bar */}
       <div className="mt-6 flex flex-wrap items-center gap-3 rounded-2xl border border-zinc-800 bg-zinc-900/40 px-5 py-4">
@@ -153,7 +216,7 @@ export default function AdminDashboardPage() {
           <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Nombre de operativo, correo o UUID..."
+            placeholder="Nombre, correo o UUID..."
             className="flex-1 bg-transparent font-mono text-xs text-zinc-200 placeholder:text-zinc-600 focus:outline-none"
           />
         </div>
@@ -163,13 +226,14 @@ export default function AdminDashboardPage() {
         <div className="relative">
           <select
             value={roleFilter}
-            onChange={(e) => setRoleFilter(e.target.value as Role | "ALL")}
+            onChange={(e) => setRoleFilter(e.target.value as RoleFilter)}
             className="appearance-none rounded-lg border border-zinc-800 bg-zinc-950/60 px-4 py-2.5 pr-9 font-mono text-xs uppercase tracking-[0.18em] text-zinc-200 focus:outline-none"
           >
             <option value="ALL">Todos los Roles</option>
-            <option value="ADMINISTRADOR">Administrador</option>
-            <option value="INSTRUCTOR">Instructor</option>
-            <option value="COMPETIDOR">Competidor</option>
+            <option value="admin">Administrador</option>
+            <option value="instructor">Instructor</option>
+            <option value="moderator">Moderador</option>
+            <option value="competitor">Competidor</option>
           </select>
           <ChevronDown
             size={12}
@@ -187,59 +251,81 @@ export default function AdminDashboardPage() {
       {/* Table */}
       <article className="mt-4 overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-900/40">
         <header className="grid grid-cols-[2fr_2fr_1.4fr_1fr_1fr] gap-4 border-b border-zinc-900 bg-zinc-950/40 px-6 py-3 font-mono text-[10px] uppercase tracking-[0.32em] text-zinc-500">
-          <span>Operativo</span>
+          <span>Usuario</span>
           <span>Correo</span>
           <span>Jerarquía (Rol)</span>
           <span>Estado</span>
           <span className="text-right">Acciones</span>
         </header>
 
-        <ul>
-          {filtered.map((u) => (
-            <li
-              key={u.id}
-              className="grid grid-cols-[2fr_2fr_1.4fr_1fr_1fr] items-center gap-4 border-b border-zinc-900/80 px-6 py-4 last:border-b-0 hover:bg-red-500/5"
-            >
-              <div className="flex items-center gap-3">
-                <div
-                  className={`flex h-11 w-11 items-center justify-center rounded-xl border border-zinc-800 bg-gradient-to-br ${u.avatarColor}`}
-                >
-                  <Users size={16} className="text-zinc-50/90" />
+        {loading ? (
+          <div className="px-6 py-12 text-center font-mono text-xs uppercase tracking-[0.32em] text-zinc-600">
+            Cargando usuarios...
+          </div>
+        ) : (
+          <ul>
+            {filtered.map((u, idx) => (
+              <li
+                key={u.id}
+                className="grid grid-cols-[2fr_2fr_1.4fr_1fr_1fr] items-center gap-4 border-b border-zinc-900/80 px-6 py-4 last:border-b-0 hover:bg-red-500/5"
+              >
+                <div className="flex items-center gap-3">
+                  <div
+                    className={`flex h-11 w-11 items-center justify-center rounded-xl border border-zinc-800 bg-gradient-to-br ${
+                      AVATAR_GRADIENTS[idx % AVATAR_GRADIENTS.length]
+                    }`}
+                  >
+                    <Users size={16} className="text-zinc-50/90" />
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-bold text-zinc-50">{u.username}</h4>
+                    <span className="font-mono text-[10px] uppercase tracking-[0.32em] text-zinc-500">
+                      {u.display_name ?? u.id.slice(0, 8)}
+                    </span>
+                  </div>
                 </div>
-                <div>
-                  <h4 className="text-sm font-bold text-zinc-50">{u.name}</h4>
-                  <span className="font-mono text-[10px] uppercase tracking-[0.32em] text-zinc-500">
-                    {u.code}
-                  </span>
+                <span className="font-mono text-xs text-zinc-300">{u.email}</span>
+                <div className="relative">
+                  <select
+                    value={u.role}
+                    onChange={(e) => handleChangeRole(u.id, e.target.value)}
+                    className={`appearance-none rounded-md border px-3 py-1 pr-7 font-mono text-[10px] uppercase tracking-[0.18em] focus:outline-none ${
+                      ROLE_COLORS[u.role] ?? "bg-zinc-900 text-zinc-400 border-zinc-800"
+                    }`}
+                  >
+                    <option value="admin">Admin</option>
+                    <option value="instructor">Instructor</option>
+                    <option value="moderator">Moderador</option>
+                    <option value="competitor">Competidor</option>
+                  </select>
+                  <ChevronDown
+                    size={10}
+                    className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-zinc-500"
+                  />
                 </div>
-              </div>
-              <span className="font-mono text-xs text-zinc-300">{u.email}</span>
-              <RolePill role={u.role} />
-              <StatusPill status={u.status} />
-              <div className="flex items-center justify-end gap-2">
-                <ActionBtn label="Inspeccionar">
-                  <Eye size={13} />
-                </ActionBtn>
-                <ActionBtn label="Bloquear" tone={u.status === "BLOCKED" ? "danger" : "neutral"}>
-                  {u.status === "BLOCKED" ? <Lock size={13} /> : <Shield size={13} />}
-                </ActionBtn>
-                <ActionBtn label="Eliminar">
-                  <Trash2 size={13} />
-                </ActionBtn>
-              </div>
-            </li>
-          ))}
-          {filtered.length === 0 && (
-            <li className="px-6 py-12 text-center font-mono text-xs uppercase tracking-[0.32em] text-zinc-600">
-              // Sin resultados para los filtros actuales
-            </li>
-          )}
-        </ul>
+                <StatusPill isActive={u.is_active} />
+                <div className="flex items-center justify-end gap-2">
+                  <ActionBtn label="Toggle activo" tone={u.is_active ? "neutral" : "danger"} onClick={() => handleToggleActive(u.id, u.is_active)}>
+                    {u.is_active ? <Shield size={13} /> : <Lock size={13} />}
+                  </ActionBtn>
+                  <ActionBtn label="Eliminar" tone="danger" onClick={() => handleDeleteUser(u.id)}>
+                    <Trash2 size={13} />
+                  </ActionBtn>
+                </div>
+              </li>
+            ))}
+            {filtered.length === 0 && (
+              <li className="px-6 py-12 text-center font-mono text-xs uppercase tracking-[0.32em] text-zinc-600">
+                // Sin resultados para los filtros actuales
+              </li>
+            )}
+          </ul>
+        )}
 
         {/* Pagination */}
         <footer className="flex flex-wrap items-center justify-between gap-3 border-t border-zinc-900 px-6 py-4">
           <span className="font-mono text-[10px] uppercase tracking-[0.32em] text-zinc-500">
-            Mostrando 1-{filtered.length} de 1,284 operativos
+            Mostrando 1-{filtered.length} de {users.length} usuarios
           </span>
           <div className="flex items-center gap-2">
             <button
@@ -274,32 +360,17 @@ export default function AdminDashboardPage() {
   );
 }
 
-function RolePill({ role }: { role: Role }) {
-  const map: Record<Role, string> = {
-    ADMINISTRADOR: "bg-red-500/15 text-red-300 border-red-500/30",
-    INSTRUCTOR: "bg-zinc-800 text-zinc-300 border-zinc-700",
-    COMPETIDOR: "bg-zinc-900 text-zinc-400 border-zinc-800",
-  };
-  return (
-    <span
-      className={`inline-flex w-fit items-center gap-2 rounded-md border px-3 py-1 font-mono text-[10px] uppercase tracking-[0.18em] ${map[role]}`}
-    >
-      {role} <ChevronDown size={10} />
-    </span>
-  );
-}
-
-function StatusPill({ status }: { status: Status }) {
-  if (status === "ACTIVE") {
+function StatusPill({ isActive }: { isActive: boolean }) {
+  if (isActive) {
     return (
       <span className="inline-flex w-fit items-center gap-2 font-mono text-xs uppercase tracking-[0.18em] text-emerald-300">
-        <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" /> Active
+        <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" /> Activo
       </span>
     );
   }
   return (
     <span className="inline-flex w-fit items-center gap-2 font-mono text-xs uppercase tracking-[0.18em] text-rose-300">
-      <span className="h-1.5 w-1.5 rounded-full bg-rose-500" /> Blocked
+      <span className="h-1.5 w-1.5 rounded-full bg-rose-500" /> Bloqueado
     </span>
   );
 }
@@ -308,10 +379,12 @@ function ActionBtn({
   children,
   label,
   tone,
+  onClick,
 }: {
   children: React.ReactNode;
   label: string;
   tone?: "neutral" | "danger";
+  onClick?: () => void;
 }) {
   const cls =
     tone === "danger"
@@ -321,6 +394,7 @@ function ActionBtn({
     <button
       aria-label={label}
       title={label}
+      onClick={onClick}
       className={`rounded-md border px-2.5 py-1.5 ${cls}`}
     >
       {children}

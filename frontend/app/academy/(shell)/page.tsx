@@ -1,256 +1,235 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect, useState } from "react";
 import {
   ArrowRight,
-  Bell,
-  Crosshair,
+  BookOpen,
+  FileText,
   GraduationCap,
-  Layers,
-  Mic,
-  Search,
-  ShieldCheck,
-  Terminal,
-  User,
+  History,
+  Loader2,
+  Plus,
 } from "lucide-react";
+import { ai, courses } from "@/lib/api";
+import { useAuth } from "@/lib/auth";
+import type { CourseOut } from "@/lib/types";
 
-const PATHS = [
-  {
-    id: "linux",
-    title: "Fundamentos de Linux",
-    subtitle: "Master the Terminal",
-    progress: 65,
-    icon: <Terminal size={16} />,
-    cta: { label: "Resume Session", href: "/academy/courses/linux", primary: true },
-  },
-  {
-    id: "redes",
-    title: "Redes Ofensivas",
-    subtitle: "Pivot, Tunnel, Persist",
-    progress: 20,
-    icon: <Crosshair size={16} />,
-    cta: { label: "Continue Journey", href: "/academy/courses/redes", primary: false },
-  },
-];
+const LEVEL_LABEL: Record<string, string> = {
+  basico: "Básico",
+  intermedio: "Intermedio",
+  avanzado: "Avanzado",
+};
 
 export default function AcademyHomePage() {
+  const { user } = useAuth();
+  const [courseList, setCourseList] = useState<CourseOut[]>([]);
+  const [docsCount, setDocsCount] = useState(0);
+  const [historyCount, setHistoryCount] = useState(0);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    Promise.all([
+      courses.list().catch(() => []),
+      ai.listDocuments().catch(() => []),
+      ai.history(100).catch(() => []),
+    ])
+      .then(([c, d, h]) => {
+        setCourseList(c);
+        setDocsCount(d.length);
+        setHistoryCount(h.length);
+      })
+      .finally(() => setLoading(false));
+  }, []);
+
+  const myCourses = user
+    ? courseList.filter((c) => c.author_username === user.username)
+    : courseList;
+  const publishedCount = courseList.filter((c) => c.is_published).length;
+  const draftCount = courseList.length - publishedCount;
+  const displayName = user?.display_name ?? user?.username ?? "instructor";
+
   return (
-    <div className="flex min-h-screen flex-col">
-      <Topbar />
+    <div className="px-10 py-10">
+      <header>
+        <span className="font-mono text-[10px] uppercase tracking-[0.32em] text-orange-400">
+          Panel del instructor
+        </span>
+        <h1 className="mt-2 font-display text-4xl font-black tracking-tight text-zinc-50 md:text-5xl">
+          Hola, <span className="text-orange-400">{displayName}</span>
+        </h1>
+        <p className="mt-2 max-w-2xl text-sm text-zinc-400">
+          Gestiona los cursos y módulos de aprendizaje de la plataforma. Sube
+          documentos para mejorar al tutor IA y revisa el historial de
+          consultas de los competidores.
+        </p>
+      </header>
 
-      <div className="px-10 py-10">
-        <header className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-black tracking-tight text-zinc-50">
-              The Academy
-            </h1>
-            <p className="mt-1 text-sm text-zinc-500">Master the Theory.</p>
-          </div>
-        </header>
-
-        {/* Learning Paths */}
-        <section className="mt-10">
-          <div className="flex items-center justify-between">
-            <h2 className="text-base font-semibold text-zinc-100">Learning Paths</h2>
-            <span className="font-mono text-[10px] uppercase tracking-[0.32em] text-orange-400">
-              · Live Operations
-            </span>
-          </div>
-
-          <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-2">
-            {PATHS.map((p) => (
-              <PathCard key={p.id} {...p} />
-            ))}
-          </div>
-
-          <div className="mt-4 rounded-xl border border-zinc-800 bg-zinc-900/40 p-5">
-            <div className="flex items-center justify-between gap-4">
-              <div className="flex items-center gap-4">
-                <div className="flex h-12 w-12 items-center justify-center rounded-lg border border-orange-500/30 bg-orange-500/10 text-orange-400">
-                  <ShieldCheck size={18} />
-                </div>
-                <div>
-                  <h3 className="text-base font-semibold text-zinc-100">
-                    Criptografía Aplicada
-                  </h3>
-                  <p className="text-xs text-zinc-500">
-                    0/8 Modules Completed · 4 Hours
-                  </p>
-                </div>
-              </div>
-              <Link
-                href="/academy/courses/crypto"
-                className="inline-flex items-center gap-2 rounded-md border border-zinc-700 bg-zinc-900/60 px-4 py-2 text-xs font-medium uppercase tracking-[0.18em] text-zinc-200 hover:border-orange-500/40"
-              >
-                Start Learning
-              </Link>
-            </div>
-          </div>
+      {/* Stats */}
+      {loading ? (
+        <div className="mt-8 flex items-center justify-center py-8">
+          <Loader2 size={20} className="animate-spin text-zinc-500" />
+        </div>
+      ) : (
+        <section className="mt-8 grid grid-cols-2 gap-3 lg:grid-cols-4">
+          <StatCard
+            icon={<BookOpen size={14} className="text-orange-400" />}
+            label="Cursos totales"
+            value={courseList.length.toString()}
+          />
+          <StatCard
+            icon={<GraduationCap size={14} className="text-emerald-400" />}
+            label="Publicados"
+            value={publishedCount.toString()}
+          />
+          <StatCard
+            icon={<FileText size={14} className="text-cyan-400" />}
+            label="Documentos IA"
+            value={docsCount.toString()}
+          />
+          <StatCard
+            icon={<History size={14} className="text-amber-400" />}
+            label="Consultas IA"
+            value={historyCount.toString()}
+          />
         </section>
+      )}
 
-        {/* Recommended */}
-        <section className="mt-12">
-          <div className="flex items-center justify-between">
-            <h2 className="text-base font-semibold text-zinc-100">
-              Recommended Content
-            </h2>
+      <section className="mt-8 grid grid-cols-1 gap-6 lg:grid-cols-[2fr_1fr]">
+        {/* Mis cursos */}
+        <article className="rounded-2xl border border-zinc-800 bg-zinc-900/40 p-6">
+          <header className="flex items-end justify-between gap-3">
+            <div>
+              <h2 className="text-lg font-bold text-zinc-50">Mis cursos</h2>
+              <p className="mt-1 text-xs text-zinc-500">
+                {myCourses.length}{" "}
+                {myCourses.length === 1 ? "curso creado" : "cursos creados"} ·{" "}
+                {draftCount} en borrador
+              </p>
+            </div>
             <Link
-              href="/academy/library"
-              className="text-xs font-medium uppercase tracking-[0.18em] text-orange-400 hover:text-orange-300"
+              href="/academy/courses"
+              className="font-mono text-[10px] uppercase tracking-[0.28em] text-orange-300 hover:text-orange-200"
             >
-              View All Archive →
+              Ver todos →
             </Link>
-          </div>
+          </header>
 
-          <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-[2fr_1fr]">
-            <article className="relative overflow-hidden rounded-xl border border-zinc-800 bg-zinc-900/40 p-6">
-              <div className="absolute -right-20 -top-10 h-72 w-72 rounded-full bg-orange-500/10 blur-3xl" />
-              <span className="relative inline-flex rounded-full bg-orange-500 px-3 py-1 font-mono text-[10px] uppercase tracking-[0.32em] text-zinc-950">
-                Hot Topic
-              </span>
-              <h3 className="relative mt-4 text-2xl font-bold text-zinc-50">
-                Advanced Intrusion Analysis 2024
-              </h3>
-              <p className="relative mt-2 max-w-md text-sm text-zinc-400">
-                Deep dive into sophisticated threat actor techniques and how to
-                neutralize them before they bypass the perimeter.
+          {loading ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 size={20} className="animate-spin text-zinc-500" />
+            </div>
+          ) : myCourses.length === 0 ? (
+            <div className="mt-5 flex flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-zinc-800 py-12 text-center">
+              <BookOpen size={28} className="text-zinc-700" />
+              <p className="text-sm text-zinc-500">
+                Aún no has creado ningún curso.
               </p>
               <Link
-                href="/academy/library"
-                className="relative mt-6 inline-flex items-center gap-2 text-xs font-medium uppercase tracking-[0.2em] text-orange-300 hover:text-orange-200"
+                href="/academy/courses"
+                className="mt-2 inline-flex items-center gap-2 rounded-full bg-orange-500 px-4 py-2 text-xs font-bold uppercase tracking-[0.2em] text-black hover:bg-orange-400"
               >
-                Read More <ArrowRight size={14} />
+                <Plus size={12} /> Crear primer curso
               </Link>
-            </article>
+            </div>
+          ) : (
+            <ul className="mt-5 flex flex-col gap-2">
+              {myCourses.slice(0, 5).map((c) => (
+                <li key={c.id}>
+                  <Link
+                    href={`/academy/courses/${c.id}`}
+                    className="flex items-center justify-between gap-3 rounded-xl border border-zinc-800 bg-zinc-950/60 px-4 py-3 transition hover:border-orange-500/40"
+                  >
+                    <div>
+                      <p className="text-sm font-bold text-zinc-50">
+                        {c.title}
+                      </p>
+                      <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-zinc-500">
+                        {LEVEL_LABEL[c.level] ?? c.level} · {c.duration_hours}h ·{" "}
+                        {c.modules_count} módulos
+                      </p>
+                    </div>
+                    <span
+                      className={
+                        c.is_published
+                          ? "rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 font-mono text-[10px] uppercase tracking-[0.22em] text-emerald-300"
+                          : "rounded-full border border-zinc-700 px-2 py-0.5 font-mono text-[10px] uppercase tracking-[0.22em] text-zinc-500"
+                      }
+                    >
+                      {c.is_published ? "Publicado" : "Borrador"}
+                    </span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          )}
+        </article>
 
-            <article className="rounded-xl border border-zinc-800 bg-zinc-900/40 p-5">
-              <div className="flex h-32 items-center justify-center rounded-lg border border-zinc-800 bg-zinc-950">
-                <div className="flex h-16 w-16 items-center justify-center rounded-full border border-amber-300/40 bg-gradient-to-br from-amber-200 to-amber-400 text-amber-950">
-                  <User size={22} />
-                </div>
-              </div>
-              <h4 className="mt-4 text-sm font-semibold text-zinc-100">
-                Exploiting Modern Web Architectures
-              </h4>
-              <p className="mt-1 text-xs text-zinc-500">Hosted by Maia Theme</p>
-            </article>
+        {/* Atajos */}
+        <article className="rounded-2xl border border-zinc-800 bg-zinc-900/40 p-6">
+          <h2 className="text-lg font-bold text-zinc-50">Atajos</h2>
+          <div className="mt-4 flex flex-col gap-2">
+            <QuickLink
+              href="/academy/courses"
+              label="Gestionar cursos"
+              icon={<BookOpen size={14} />}
+            />
+            <QuickLink
+              href="/academy/ai-documents"
+              label="Subir documentos IA"
+              icon={<FileText size={14} />}
+            />
+            <QuickLink
+              href="/academy/ai-history"
+              label="Ver consultas IA"
+              icon={<History size={14} />}
+            />
           </div>
-        </section>
-      </div>
+        </article>
+      </section>
     </div>
   );
 }
 
-function Topbar() {
-  return (
-    <header className="flex items-center gap-4 border-b border-zinc-900 px-10 py-4">
-      <div className="relative flex-1 max-w-2xl">
-        <Search
-          size={14}
-          className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500"
-        />
-        <input
-          type="text"
-          placeholder="Search system network…"
-          className="w-full rounded-md border border-zinc-800 bg-zinc-900/40 py-2 pl-9 pr-3 text-sm text-zinc-200 placeholder:text-zinc-500 focus:border-orange-500/40 focus:outline-none"
-        />
-      </div>
-      <button
-        type="button"
-        className="rounded-md border border-zinc-800 bg-zinc-900/40 p-2 text-zinc-400 hover:text-zinc-100"
-      >
-        <Bell size={14} />
-      </button>
-      <button
-        type="button"
-        className="rounded-md border border-zinc-800 bg-zinc-900/40 p-2 text-zinc-400 hover:text-zinc-100"
-      >
-        <Mic size={14} />
-      </button>
-      <Link
-        href="/profile"
-        className="flex h-9 w-9 items-center justify-center rounded-full border border-emerald-500/40 bg-emerald-500/10 text-emerald-300 hover:bg-emerald-500/20"
-      >
-        <User size={14} />
-      </Link>
-    </header>
-  );
-}
-
-function PathCard({
-  title,
-  subtitle,
-  progress,
+function StatCard({
   icon,
-  cta,
+  label,
+  value,
 }: {
-  title: string;
-  subtitle: string;
-  progress: number;
   icon: React.ReactNode;
-  cta: { label: string; href: string; primary: boolean };
+  label: string;
+  value: string;
 }) {
   return (
-    <article className="relative overflow-hidden rounded-xl border border-zinc-800 bg-zinc-900/40 p-6">
-      <div className="flex items-start justify-between">
-        <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg border border-orange-500/30 bg-orange-500/10 text-orange-400">
-            {icon}
-          </div>
-          <div>
-            <span className="font-mono text-[10px] uppercase tracking-[0.28em] text-zinc-500">
-              {subtitle}
-            </span>
-            <h3 className="text-lg font-bold text-zinc-50">{title}</h3>
-          </div>
-        </div>
-        <RingProgress value={progress} />
-      </div>
-
-      <div className="mt-6">
-        {cta.primary ? (
-          <Link
-            href={cta.href}
-            className="inline-flex items-center gap-2 rounded-md bg-orange-500 px-4 py-2 text-xs font-bold uppercase tracking-[0.2em] text-black hover:bg-orange-400"
-          >
-            {cta.label}
-          </Link>
-        ) : (
-          <Link
-            href={cta.href}
-            className="inline-flex items-center gap-2 text-xs font-medium uppercase tracking-[0.2em] text-orange-300 hover:text-orange-200"
-          >
-            {cta.label} <ArrowRight size={14} />
-          </Link>
-        )}
-      </div>
+    <article className="rounded-2xl border border-zinc-800 bg-zinc-900/40 px-5 py-4">
+      <span className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.28em] text-zinc-500">
+        {icon} {label}
+      </span>
+      <p className="mt-2 font-display text-2xl font-black text-zinc-50">
+        {value}
+      </p>
     </article>
   );
 }
 
-function RingProgress({ value }: { value: number }) {
-  const r = 26;
-  const c = 2 * Math.PI * r;
-  const offset = c - (value / 100) * c;
+function QuickLink({
+  href,
+  label,
+  icon,
+}: {
+  href: string;
+  label: string;
+  icon: React.ReactNode;
+}) {
   return (
-    <div className="relative flex h-16 w-16 items-center justify-center">
-      <svg className="absolute inset-0 -rotate-90" viewBox="0 0 64 64">
-        <circle cx="32" cy="32" r={r} stroke="rgb(63 63 70 / 0.5)" strokeWidth="4" fill="transparent" />
-        <circle
-          cx="32"
-          cy="32"
-          r={r}
-          stroke="rgb(255 91 58)"
-          strokeWidth="4"
-          fill="transparent"
-          strokeDasharray={c}
-          strokeDashoffset={offset}
-          strokeLinecap="round"
-        />
-      </svg>
-      <span className="relative font-mono text-xs font-bold text-zinc-50">
-        {value}%
+    <Link
+      href={href}
+      className="flex items-center justify-between rounded-md border border-zinc-800 bg-zinc-950/60 px-3 py-2 text-xs text-zinc-300 transition hover:border-orange-500/30 hover:text-orange-300"
+    >
+      <span className="inline-flex items-center gap-2">
+        {icon} {label}
       </span>
-    </div>
+      <ArrowRight size={12} />
+    </Link>
   );
 }

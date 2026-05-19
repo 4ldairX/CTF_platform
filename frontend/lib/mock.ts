@@ -1,14 +1,120 @@
-import type {
-  AiConversation,
-  AuditLog,
-  Challenge,
-  CtfEvent,
-  LabEnvironment,
-  LearningModule,
-  Submission,
-  Team,
-  User,
-} from "./types";
+// Legacy mock data — types defined locally to avoid coupling with the API types
+
+type User = {
+  id: string;
+  fullName: string;
+  email: string;
+  cadetId: string;
+  role: "admin" | "competidor" | "instructor" | "moderador";
+  avatarColor: string;
+  status: "active" | "blocked";
+  points: number;
+  resolvedChallenges: number;
+  rank: number;
+  joinedAt: string;
+};
+
+type Team = {
+  id: string;
+  name: string;
+  emblem: string;
+  motto: string;
+  leaderId: string;
+  members: string[];
+  points: number;
+  resolved: number;
+  createdAt: string;
+};
+
+type ChallengeCategory = "Web" | "Crypto" | "Pwn" | "Forense" | "OSINT" | "Reverse";
+type ChallengeDifficulty = "Principiante" | "Intermedio" | "Avanzado";
+
+type Challenge = {
+  id: string;
+  title: string;
+  description: string;
+  category: ChallengeCategory;
+  difficulty: ChallengeDifficulty;
+  points: number;
+  solves: number;
+  hidden: boolean;
+  resources: { name: string; sizeKb: number; format: string }[];
+  hints: { id: string; cost: number; preview: string; locked: boolean }[];
+  flagFormat: string;
+  rating: number;
+};
+
+type LearningModule = {
+  id: string;
+  title: string;
+  description: string;
+  category: ChallengeCategory;
+  level: ChallengeDifficulty;
+  lessons: { id: string; title: string; durationMin: number; completed: boolean }[];
+  progress: number;
+};
+
+type LabEnvironment = {
+  challengeId: string;
+  status: "stopped" | "running" | "starting" | "error";
+  uptimeSec: number;
+  remainingSec: number;
+  cpuPct: number;
+  ramMb: number;
+  ramMaxMb: number;
+  vpnReady: boolean;
+  subnet: string;
+};
+
+type Submission = {
+  id: string;
+  challengeId: string;
+  userId: string;
+  flag: string;
+  result: "success" | "fail";
+  pointsAwarded: number;
+  ip: string;
+  at: string;
+};
+
+type CtfEvent = {
+  id: string;
+  name: string;
+  description: string;
+  startsAt: string;
+  endsAt: string;
+  type: "individual" | "equipos";
+  maxParticipants: number;
+  registered: number;
+  status: "pendiente" | "activo" | "finalizado";
+  rules: string[];
+  challengeIds: string[];
+};
+
+type AuditLog = {
+  id: string;
+  user: string;
+  action: string;
+  detail: string;
+  ip: string;
+  at: string;
+  level: "info" | "warn" | "critical";
+};
+
+type AiMessage = {
+  id: string;
+  from: "user" | "assistant";
+  content: string;
+  at: string;
+  sources?: string[];
+};
+
+type AiConversation = {
+  id: string;
+  title: string;
+  updatedAt: string;
+  messages: AiMessage[];
+};
 
 export const currentUser: User = {
   id: "u-001",

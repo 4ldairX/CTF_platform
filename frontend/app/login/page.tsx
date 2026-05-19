@@ -9,11 +9,14 @@ import Input from "@/components/ui/Input";
 import Button from "@/components/ui/Button";
 import Toast from "@/components/ui/Toast";
 import type { ToastVariant } from "@/components/ui/Toast";
+import { auth as apiAuth, setTokens, ApiError } from "@/lib/api";
+import { useAuth, redirectByRole } from "@/lib/auth";
 
 type Errors = { email?: string; password?: string };
 
 export default function LoginPage() {
   const router = useRouter();
+  const { loadUser } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [errors, setErrors] = useState<Errors>({});
@@ -30,45 +33,59 @@ export default function LoginPage() {
     return next;
   }
 
-  function handleSubmit(e: FormEvent<HTMLFormElement>) {
+  async function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const found = validate();
     setErrors(found);
 
     if (Object.keys(found).length > 0) {
-      setToast({
-        message: "Revisa los campos marcados.",
-        variant: "error",
-      });
+      setToast({ message: "Revisa los campos marcados.", variant: "error" });
       return;
     }
 
     setSubmitting(true);
-    const isAdmin =
-      email.trim().toLowerCase() === "admin" && password === "admin";
+    try {
+      const result = await apiAuth.login(email.trim(), password);
 
-    console.info("[CyberQuest] Credenciales válidas (simulado)", {
-      email,
-      passwordLength: password.length,
-      role: isAdmin ? "admin" : "competitor",
-    });
-
-    window.setTimeout(() => {
-      setSubmitting(false);
-      if (isAdmin) {
-        setToast({
-          message: "Acceso de administrador concedido. OBSIDIAN.ADMIN",
-          variant: "success",
-        });
-        router.push("/admin");
-      } else {
-        setToast({
-          message: "Acceso concedido. Bienvenido a CyberQuest.",
-          variant: "success",
-        });
+      // MFA required (user already has MFA enabled)
+      if ("mfa_required" in result) {
+        sessionStorage.setItem("cq_mfa_temp", result.temp_token);
         router.push("/mfa");
+        return;
       }
-    }, 600);
+
+      // Forced MFA setup (privileged role without MFA enabled)
+      if ("mfa_setup_required" in result) {
+        sessionStorage.setItem("cq_mfa_setup_temp", result.temp_token);
+        sessionStorage.setItem("cq_mfa_setup_role", result.role);
+        router.push("/mfa-setup");
+        return;
+      }
+
+      // Full token response
+      setTokens(result.access_token, result.refresh_token);
+      const user = await loadUser();
+      if (!user) {
+        setToast({ message: "No se pudo cargar el perfil.", variant: "error" });
+        return;
+      }
+      setToast({ message: "Acceso concedido. Bienvenido a CyberQuest.", variant: "success" });
+      redirectByRole(user.role, router);
+    } catch (err) {
+      if (err instanceof ApiError) {
+        if (err.status === 401) {
+          setToast({ message: "Credenciales incorrectas.", variant: "error" });
+        } else if (err.status === 403) {
+          setToast({ message: "Cuenta inactiva. Contacta al administrador.", variant: "error" });
+        } else {
+          setToast({ message: err.detail || "Error al iniciar sesión.", variant: "error" });
+        }
+      } else {
+        setToast({ message: "Error de conexión. Intenta de nuevo.", variant: "error" });
+      }
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   return (
@@ -88,7 +105,7 @@ export default function LoginPage() {
             label="Email institucional"
             type="text"
             autoComplete="email"
-            placeholder="usuario@emi.edu.bo · admin"
+            placeholder="usuario@emi.edu.bo"
             icon={<Mail size={16} />}
             value={email}
             onChange={(e) => setEmail(e.target.value)}

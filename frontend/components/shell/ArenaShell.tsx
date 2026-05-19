@@ -1,39 +1,47 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import {
   Bell,
+  Bot,
   CalendarRange,
   Crosshair,
-  HeadphonesIcon,
+  GraduationCap,
+  History,
   LayoutGrid,
   LifeBuoy,
+  LogOut,
   Search,
   Settings,
   ShieldHalf,
   TrendingUp,
+  Trophy,
   User,
+  Users,
 } from "lucide-react";
 import Wordmark from "@/components/brand/Wordmark";
+import { useAuth } from "@/lib/auth";
 
 type Item = { href: string; label: string; icon: React.ReactNode };
 
 const NAV: Item[] = [
-  { href: "/arena", label: "Courses", icon: <LayoutGrid size={14} /> },
-  { href: "/arena/library", label: "Library", icon: <ShieldHalf size={14} /> },
-  {
-    href: "/arena/certifications",
-    label: "Certifications",
-    icon: <Crosshair size={14} />,
-  },
-  { href: "/arena/progress", label: "Progress", icon: <TrendingUp size={14} /> },
-  { href: "/arena/events", label: "Events", icon: <CalendarRange size={14} /> },
+  { href: "/arena", label: "Inicio", icon: <LayoutGrid size={14} /> },
+  { href: "/arena/challenges", label: "Retos", icon: <Crosshair size={14} /> },
+  { href: "/arena/events", label: "Eventos", icon: <CalendarRange size={14} /> },
+  { href: "/arena/teams", label: "Equipos", icon: <Users size={14} /> },
+  { href: "/leaderboard", label: "Clasificación", icon: <Trophy size={14} /> },
+  { href: "/arena/progress", label: "Mi progreso", icon: <TrendingUp size={14} /> },
+  { href: "/arena/certifications", label: "Certificaciones", icon: <GraduationCap size={14} /> },
+  { href: "/arena/library", label: "Biblioteca", icon: <ShieldHalf size={14} /> },
+  { href: "/tutor", label: "Tutor IA", icon: <Bot size={14} /> },
+  { href: "/arena/ai-queries", label: "Mis consultas IA", icon: <History size={14} /> },
 ];
 
 const FOOT: Item[] = [
-  { href: "/arena/settings", label: "Settings", icon: <Settings size={14} /> },
-  { href: "/arena/support", label: "Support", icon: <LifeBuoy size={14} /> },
+  { href: "/arena/settings", label: "Configuración", icon: <Settings size={14} /> },
+  { href: "/arena/support", label: "Soporte", icon: <LifeBuoy size={14} /> },
 ];
 
 export default function ArenaShell({
@@ -44,6 +52,14 @@ export default function ArenaShell({
   topBar?: boolean;
 }) {
   const path = usePathname();
+  const router = useRouter();
+  const { logout } = useAuth();
+
+  function handleLogout() {
+    logout();
+    router.push("/login");
+  }
+
   return (
     <div className="brand-arena flex min-h-screen bg-[#0a0a0d] text-zinc-100">
       <aside className="flex w-60 shrink-0 flex-col border-r border-zinc-900 bg-[#0d0d12]">
@@ -54,7 +70,10 @@ export default function ArenaShell({
         </div>
         <nav className="flex flex-1 flex-col gap-0.5 px-3">
           {NAV.map((it) => {
-            const active = path === it.href || path.startsWith(it.href + "/");
+            const active =
+              it.href === "/arena"
+                ? path === "/arena"
+                : path === it.href || path.startsWith(it.href + "/");
             return (
               <Link
                 key={it.href}
@@ -74,12 +93,6 @@ export default function ArenaShell({
           })}
         </nav>
         <div className="px-3 pb-5">
-          <Link
-            href="/select"
-            className="mb-3 inline-flex w-full items-center justify-center gap-2 rounded-md bg-orange-500 px-3 py-2 text-xs font-semibold text-black hover:bg-orange-400"
-          >
-            Upgrade to Pro
-          </Link>
           <div className="flex flex-col gap-0.5 border-t border-zinc-900 pt-3">
             {FOOT.map((it) => (
               <Link
@@ -90,6 +103,13 @@ export default function ArenaShell({
                 {it.icon} {it.label}
               </Link>
             ))}
+            <button
+              type="button"
+              onClick={handleLogout}
+              className="inline-flex items-center gap-3 rounded-md px-3 py-1.5 text-xs uppercase tracking-[0.18em] text-zinc-500 hover:text-rose-300"
+            >
+              <LogOut size={14} /> Cerrar sesión
+            </button>
           </div>
         </div>
       </aside>
@@ -106,27 +126,41 @@ export default function ArenaShell({
 }
 
 function ArenaTopbar() {
+  const router = useRouter();
+  const [q, setQ] = useState("");
+
+  function handleSearch(e: React.FormEvent) {
+    e.preventDefault();
+    if (q.trim()) {
+      router.push(`/arena/challenges?q=${encodeURIComponent(q.trim())}`);
+    }
+  }
+
   return (
     <header className="flex items-center gap-4 border-b border-zinc-900 px-8 py-4">
-      <div className="relative flex-1 max-w-xl">
+      <form onSubmit={handleSearch} className="relative flex-1 max-w-xl">
         <Search
           size={14}
           className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500"
         />
         <input
           type="text"
-          placeholder="Search system network…"
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+          placeholder="Buscar retos…"
           className="w-full rounded-md border border-zinc-800 bg-zinc-900/40 py-2 pl-9 pr-3 text-sm text-zinc-200 placeholder:text-zinc-500 focus:border-orange-500/40 focus:outline-none"
         />
-      </div>
+      </form>
       <button
         type="button"
+        aria-label="Notificaciones"
         className="rounded-md border border-zinc-800 bg-zinc-900/40 p-2 text-zinc-400 hover:text-zinc-100"
       >
         <Bell size={14} />
       </button>
       <Link
         href="/profile"
+        aria-label="Mi perfil"
         className="flex h-9 w-9 items-center justify-center rounded-full border border-emerald-500/40 bg-emerald-500/10 text-emerald-300 hover:bg-emerald-500/20"
       >
         <User size={14} />

@@ -1,3 +1,4 @@
+import RequireAuth from "@/components/auth/RequireAuth";
 import AcademyShell from "@/components/shell/AcademyShell";
 
 export default function AcademyLayout({
@@ -5,5 +6,9 @@ export default function AcademyLayout({
 }: {
   children: React.ReactNode;
 }) {
-  return <AcademyShell>{children}</AcademyShell>;
+  return (
+    <RequireAuth allowedRoles={["instructor", "admin"]}>
+      <AcademyShell>{children}</AcademyShell>
+    </RequireAuth>
+  );
 }

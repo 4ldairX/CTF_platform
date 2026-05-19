@@ -1,6 +1,6 @@
 import { GraduationCap, Crosshair, ShieldCheck } from "lucide-react";
 
-type Variant = "cyberquest" | "academy" | "arena" | "obsidian";
+type Variant = "cyberquest" | "academy" | "arena" | "admin";
 
 const map: Record<
   Variant,
@@ -12,19 +12,19 @@ const map: Record<
     icon: <ShieldCheck size={16} />,
   },
   academy: {
-    label: "The Academy",
-    sub: "MASTERING THE THEORY",
+    label: "Academia",
+    sub: "APRENDE LA TEORÍA",
     color: "text-orange-500",
     icon: <GraduationCap size={14} />,
   },
   arena: {
-    label: "The Arena",
-    sub: "CONFRONT THE CHALLENGES",
+    label: "Arena",
+    sub: "ENFRENTA LOS RETOS",
     color: "text-orange-500",
     icon: <Crosshair size={14} />,
   },
-  obsidian: {
-    label: "OBSIDIAN.ADMIN",
+  admin: {
+    label: "CYBERQUEST.ADMIN",
     color: "text-red-500",
     icon: <ShieldCheck size={16} />,
   },

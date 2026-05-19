@@ -1,203 +1,251 @@
 "use client";
 
+import { useRouter } from "next/navigation";
+import { useState, type FormEvent } from "react";
+import Link from "next/link";
 import {
-  Award,
-  CheckCircle2,
-  Clock,
-  Edit3,
-  Lock,
-  Medal,
-  Shield,
-  ShieldHalf,
-  Sparkle,
-  Star,
-  Trophy,
-  UserCheck,
-  Zap,
+  AlertTriangle,
+  KeyRound,
+  Loader2,
+  LogOut,
+  Save,
+  ShieldCheck,
+  User as UserIcon,
 } from "lucide-react";
+import { auth as authApi, ApiError } from "@/lib/api";
+import { useAuth } from "@/lib/auth";
+import Toast from "@/components/ui/Toast";
 
-const MEDALS = [
-  { icon: <Trophy size={18} />, locked: false },
-  { icon: <CheckCircle2 size={18} />, locked: false },
-  { icon: <Medal size={18} />, locked: false },
-  { icon: <Star size={18} />, locked: false },
-  { icon: <Award size={18} />, locked: false },
-  { icon: <Lock size={18} />, locked: true },
-];
-
-const FEED = [
-  {
-    icon: <Shield size={14} />,
-    title: "Breach Neutralization // Sector 7",
-    timestamp: "2 hours ago",
-    body:
-      "Successfully intercepted unauthorized lateral movement in the core database. 14 intrusion vectors terminated.",
-  },
-  {
-    icon: <Zap size={14} />,
-    title: "System Patch Deployment // Ver. 14.04",
-    timestamp: "08:00",
-    body:
-      "Deployed security updates to node cluster. Node health verified at 100% across all 12 zones.",
-  },
-  {
-    icon: <UserCheck size={14} />,
-    title: "Session Initiated",
-    timestamp: "Yesterday",
-    body: "Remote session established via VPN-K9 from secure terminal.",
-  },
-];
+const ROLE_LABEL: Record<string, string> = {
+  admin: "Administrador",
+  moderator: "Moderador",
+  instructor: "Instructor",
+  competitor: "Competidor",
+};
 
 export default function AdminProfilePage() {
+  const router = useRouter();
+  const { user, loadUser, logout, isLoading } = useAuth();
+
+  const [displayName, setDisplayName] = useState(user?.display_name ?? "");
+  const [bio, setBio] = useState(user?.bio ?? "");
+  const [country, setCountry] = useState(user?.country ?? "");
+  const [avatarUrl, setAvatarUrl] = useState(user?.avatar_url ?? "");
+  const [saving, setSaving] = useState(false);
+  const [toast, setToast] = useState<
+    { message: string; variant: "success" | "error" } | null
+  >(null);
+
+  if (!isLoading && user && displayName === "" && user.display_name) {
+    setDisplayName(user.display_name);
+  }
+
+  async function handleSave(e: FormEvent) {
+    e.preventDefault();
+    setSaving(true);
+    try {
+      await authApi.updateMe({
+        display_name: displayName,
+        bio,
+        country,
+        avatar_url: avatarUrl,
+      });
+      await loadUser();
+      setToast({ message: "Cambios guardados.", variant: "success" });
+    } catch (err) {
+      const msg = err instanceof ApiError ? err.detail : "Error.";
+      setToast({ message: msg, variant: "error" });
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  function handleLogout() {
+    logout();
+    router.push("/login");
+  }
+
+  if (isLoading) {
+    return (
+      <div className="flex min-h-[60vh] items-center justify-center">
+        <Loader2 size={24} className="animate-spin text-zinc-500" />
+      </div>
+    );
+  }
+
+  if (!user) return null;
+
   return (
     <div className="px-10 py-10">
-      {/* Header */}
-      <div className="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <span className="font-mono text-[10px] uppercase tracking-[0.32em] text-red-400">
-            // OPERATIVE STATUS: ACTIVE
-          </span>
-          <h1 className="mt-2 font-display text-5xl font-black tracking-tight text-zinc-50">
-            PROFILE_0034
-          </h1>
-        </div>
-        <button className="inline-flex items-center gap-2 rounded-full bg-red-500 px-5 py-2.5 font-mono text-[11px] font-bold uppercase tracking-[0.2em] text-black shadow-[0_0_24px_-6px_rgba(239,68,68,0.6)] hover:bg-red-400">
-          <Edit3 size={13} /> Edit Profile
-        </button>
-      </div>
+      <header>
+        <span className="font-mono text-[10px] uppercase tracking-[0.32em] text-red-400">
+          // PERFIL
+        </span>
+        <h1 className="mt-2 font-display text-4xl font-black tracking-tight text-zinc-50 md:text-5xl">
+          Mi cuenta
+        </h1>
+        <p className="mt-2 max-w-2xl text-sm text-zinc-500">
+          Información personal y seguridad de tu cuenta de{" "}
+          <span className="text-zinc-300">{ROLE_LABEL[user.role] ?? user.role}</span>.
+        </p>
+      </header>
 
-      {/* Bento grid */}
-      <div className="mt-8 grid grid-cols-1 gap-4 lg:grid-cols-3">
-        {/* Identity card spans 2 cols */}
-        <article className="relative overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-900/40 p-6 lg:col-span-2">
-          <div className="absolute left-0 top-0 h-1 w-full bg-gradient-to-r from-red-500 via-red-500/40 to-transparent" />
-
-          <div className="grid grid-cols-1 gap-6 md:grid-cols-[160px_1fr]">
-            <div className="flex h-40 w-40 items-center justify-center rounded-2xl border border-red-500/40 bg-gradient-to-br from-cyan-400/30 via-cyan-700/20 to-zinc-950 text-cyan-200">
-              <Sparkle size={48} />
-            </div>
-            <div>
-              <span className="font-mono text-[10px] uppercase tracking-[0.32em] text-zinc-500">
-                Codename
-              </span>
-              <h2 className="mt-1 font-display text-3xl font-black tracking-tight text-zinc-50">
-                SHADOW_WALKER
-              </h2>
-              <span className="mt-3 block font-mono text-[10px] uppercase tracking-[0.32em] text-zinc-500">
-                Encrypted Email
-              </span>
-              <p className="mt-1 font-mono text-sm text-zinc-300">
-                s.walker@obsidian.internal
-              </p>
-              <span className="mt-4 block font-mono text-[10px] uppercase tracking-[0.32em] text-zinc-500">
-                Bio / Tactical Profile
-              </span>
-              <p className="mt-1 max-w-md text-sm italic text-zinc-400">
-                "Specialist in deep-packet inspection and kinetic
-                neutralisation. Operating under zero-trace protocols since 2021.
-                Tier 1 credential holder for obsidian-core systems."
-              </p>
-            </div>
-          </div>
-        </article>
-
-        {/* LVL card */}
+      <div className="mt-8 grid grid-cols-1 gap-6 lg:grid-cols-[1.4fr_1fr]">
         <article className="rounded-2xl border border-zinc-800 bg-zinc-900/40 p-6">
-          <span className="font-mono text-[10px] uppercase tracking-[0.32em] text-zinc-500">
-            Experience Progress
-          </span>
-          <div className="mt-3 flex items-baseline gap-3">
-            <span className="font-display text-5xl font-black tracking-tight text-red-500">
-              LVL 48
-            </span>
-            <span className="font-mono text-[10px] uppercase tracking-[0.32em] text-zinc-500">
-              Elite Operator
-            </span>
-          </div>
-          <div className="mt-5 h-1.5 overflow-hidden rounded-full bg-zinc-800">
-            <div className="h-full w-[68%] bg-gradient-to-r from-red-500 to-amber-400" />
-          </div>
-          <div className="mt-2 flex items-center justify-between font-mono text-[10px] uppercase tracking-[0.32em] text-zinc-500">
-            <span>12,800 XP</span>
-            <span>18,000 XP</span>
+          <h2 className="flex items-center gap-2 text-sm font-bold uppercase tracking-[0.18em] text-zinc-300">
+            <UserIcon size={14} className="text-red-400" /> Perfil
+          </h2>
+
+          <div className="mt-4 grid grid-cols-2 gap-3 rounded-xl border border-zinc-800 bg-zinc-950/60 p-4 text-xs text-zinc-500">
+            <Info label="Usuario" value={user.username} />
+            <Info label="Correo" value={user.email} />
+            <Info label="Rol" value={ROLE_LABEL[user.role] ?? user.role} />
+            <Info
+              label="Estado"
+              value={user.is_active ? "Activo" : "Desactivado"}
+            />
           </div>
 
-          <div className="mt-6 grid grid-cols-2 gap-3 border-t border-zinc-900 pt-5">
-            <div>
-              <span className="font-mono text-[10px] uppercase tracking-[0.32em] text-zinc-500">
-                Global Rank
-              </span>
-              <p className="mt-1 font-display text-2xl font-bold text-zinc-50">
-                #124
-              </p>
+          <form onSubmit={handleSave} className="mt-5 flex flex-col gap-4">
+            <Field label="Nombre visible">
+              <input
+                maxLength={100}
+                value={displayName}
+                onChange={(e) => setDisplayName(e.target.value)}
+                placeholder={user.username}
+                className="w-full rounded-md border border-zinc-800 bg-zinc-950/80 px-3 py-2.5 text-sm text-zinc-50 focus:border-red-500/40 focus:outline-none"
+              />
+            </Field>
+            <Field label="Biografía">
+              <textarea
+                maxLength={500}
+                rows={3}
+                value={bio}
+                onChange={(e) => setBio(e.target.value)}
+                placeholder="Describe tu rol o áreas de responsabilidad..."
+                className="w-full resize-none rounded-md border border-zinc-800 bg-zinc-950/80 px-3 py-2.5 text-sm text-zinc-50 focus:border-red-500/40 focus:outline-none"
+              />
+            </Field>
+            <Field label="País">
+              <input
+                maxLength={64}
+                value={country}
+                onChange={(e) => setCountry(e.target.value)}
+                placeholder="Bolivia"
+                className="w-full rounded-md border border-zinc-800 bg-zinc-950/80 px-3 py-2.5 text-sm text-zinc-50 focus:border-red-500/40 focus:outline-none"
+              />
+            </Field>
+            <Field label="URL de avatar">
+              <input
+                type="url"
+                maxLength={512}
+                value={avatarUrl}
+                onChange={(e) => setAvatarUrl(e.target.value)}
+                placeholder="https://..."
+                className="w-full rounded-md border border-zinc-800 bg-zinc-950/80 px-3 py-2.5 font-mono text-xs text-zinc-200 focus:border-red-500/40 focus:outline-none"
+              />
+            </Field>
+            <div className="mt-2 flex justify-end">
+              <button
+                type="submit"
+                disabled={saving}
+                className="inline-flex items-center gap-2 rounded-full bg-red-500 px-6 py-2.5 text-xs font-bold uppercase tracking-[0.2em] text-black hover:bg-red-400 disabled:opacity-50"
+              >
+                {saving ? (
+                  <Loader2 size={12} className="animate-spin" />
+                ) : (
+                  <Save size={12} />
+                )}
+                {saving ? "Guardando..." : "Guardar cambios"}
+              </button>
             </div>
-            <div>
-              <span className="font-mono text-[10px] uppercase tracking-[0.32em] text-zinc-500">
-                Solved Challenges
-              </span>
-              <p className="mt-1 font-display text-2xl font-bold text-zinc-50">
-                1,248
-              </p>
-            </div>
-          </div>
+          </form>
         </article>
 
-        {/* Achievement medals */}
-        <article className="rounded-2xl border border-zinc-800 bg-zinc-900/40 p-6">
-          <span className="font-mono text-[10px] uppercase tracking-[0.32em] text-zinc-500">
-            Achievement Medals
-          </span>
-          <div className="mt-5 grid grid-cols-3 gap-3">
-            {MEDALS.map((m, i) => (
-              <div
-                key={i}
-                className={
-                  m.locked
-                    ? "flex aspect-square items-center justify-center rounded-xl border border-zinc-800 bg-zinc-900/30 text-zinc-700"
-                    : "flex aspect-square items-center justify-center rounded-xl border border-red-500/30 bg-red-500/10 text-red-300"
-                }
-              >
-                {m.icon}
-              </div>
-            ))}
-          </div>
-        </article>
-
-        {/* Tactical activity feed spans 2 cols */}
-        <article className="rounded-2xl border border-zinc-800 bg-zinc-900/40 lg:col-span-2">
-          <header className="flex items-center justify-between border-b border-zinc-900 px-6 py-4">
-            <span className="font-mono text-[10px] uppercase tracking-[0.32em] text-zinc-500">
-              Tactical Activity Feed
-            </span>
-            <span className="font-mono text-[10px] uppercase tracking-[0.32em] text-emerald-300">
-              98.2% SUCCESS RATE
-            </span>
-          </header>
-          <ul>
-            {FEED.map((f, i) => (
-              <li
-                key={i}
-                className="flex items-start gap-4 border-b border-zinc-900/80 px-6 py-4 last:border-b-0"
-              >
-                <span className="mt-0.5 rounded-md border border-red-500/30 bg-red-500/10 p-2 text-red-300">
-                  {f.icon}
-                </span>
-                <div className="flex-1">
-                  <div className="flex items-center justify-between gap-3">
-                    <h4 className="text-sm font-bold text-zinc-50">
-                      {f.title}
-                    </h4>
-                    <span className="inline-flex items-center gap-1 font-mono text-[10px] uppercase tracking-[0.32em] text-zinc-500">
-                      <Clock size={10} /> {f.timestamp}
-                    </span>
-                  </div>
-                  <p className="mt-1 text-xs text-zinc-400">{f.body}</p>
+        <div className="flex flex-col gap-6">
+          <article className="rounded-2xl border border-zinc-800 bg-zinc-900/40 p-6">
+            <h2 className="flex items-center gap-2 text-sm font-bold uppercase tracking-[0.18em] text-zinc-300">
+              <ShieldCheck size={14} className="text-red-400" /> Seguridad
+            </h2>
+            <div className="mt-4 rounded-xl border border-zinc-800 bg-zinc-950/60 p-4">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-sm font-semibold text-zinc-200">
+                    Autenticación de dos factores
+                  </p>
+                  <p className="mt-1 text-xs text-zinc-500">
+                    {user.mfa_enabled
+                      ? "Tu cuenta está protegida con 2FA."
+                      : "Añade una capa extra de seguridad."}
+                  </p>
                 </div>
-              </li>
-            ))}
-          </ul>
-        </article>
+                {user.mfa_enabled ? (
+                  <span className="inline-flex items-center gap-1 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 font-mono text-[10px] uppercase tracking-[0.22em] text-emerald-300">
+                    Activado
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1 rounded-full border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 font-mono text-[10px] uppercase tracking-[0.22em] text-amber-300">
+                    Inactivo
+                  </span>
+                )}
+              </div>
+              {!user.mfa_enabled && (
+                <Link
+                  href="/mfa-setup"
+                  className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-md bg-red-500 px-4 py-2 text-xs font-bold uppercase tracking-[0.2em] text-black hover:bg-red-400"
+                >
+                  <KeyRound size={12} /> Activar 2FA
+                </Link>
+              )}
+            </div>
+          </article>
+
+          <article className="rounded-2xl border border-zinc-800 bg-zinc-900/40 p-6">
+            <h2 className="flex items-center gap-2 text-sm font-bold uppercase tracking-[0.18em] text-zinc-300">
+              <AlertTriangle size={14} className="text-rose-400" /> Sesión
+            </h2>
+            <p className="mt-3 text-xs text-zinc-500">
+              Cierra la sesión activa en este dispositivo.
+            </p>
+            <button
+              onClick={handleLogout}
+              className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-md border border-rose-500/40 bg-rose-500/10 px-4 py-2 text-xs font-bold uppercase tracking-[0.2em] text-rose-300 hover:bg-rose-500/20"
+            >
+              <LogOut size={12} /> Cerrar sesión
+            </button>
+          </article>
+        </div>
       </div>
+
+      {toast && (
+        <Toast
+          message={toast.message}
+          variant={toast.variant}
+          onClose={() => setToast(null)}
+        />
+      )}
+    </div>
+  );
+}
+
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <label className="block">
+      <span className="font-mono text-[10px] uppercase tracking-[0.28em] text-zinc-500">
+        {label}
+      </span>
+      <div className="mt-2">{children}</div>
+    </label>
+  );
+}
+
+function Info({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <span className="font-mono text-[10px] uppercase tracking-[0.28em] text-zinc-500">
+        {label}
+      </span>
+      <p className="mt-1 truncate text-xs text-zinc-200">{value}</p>
     </div>
   );
 }

@@ -1,0 +1,48 @@
+# ─── OS / editor ────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp
+
+# ─── Logs ───────────────────────────────────────────────────
+*.log
+logs/
+
+# ─── Local environment ──────────────────────────────────────
+.env
+.env.*
+!.env.example
+!.env.production.example
+
+# ─── Node / Next.js ─────────────────────────────────────────
+node_modules/
+.next/
+out/
+.npm/
+.pnpm-store/
+.yarn/
+.turbo/
+next-env.d.ts
+
+# ─── Python ─────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+env/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+*.egg-info/
+
+# ─── Build / coverage ───────────────────────────────────────
+dist/
+build/
+coverage/
+*.tsbuildinfo
+
+# ─── Misc ───────────────────────────────────────────────────
+*.pid
+*.seed

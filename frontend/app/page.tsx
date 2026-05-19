@@ -61,12 +61,12 @@ export default function LandingPage() {
                   <div className="absolute inset-0 cq-bg-grid opacity-25" />
                   <div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-zinc-950 to-transparent" />
                   <div className="absolute left-6 top-6 inline-flex items-center gap-2 rounded-full border border-cyan-400/30 bg-cyan-400/10 px-3 py-1 font-mono text-[10px] uppercase tracking-[0.32em] text-cyan-200">
-                    <ScanLine size={12} /> Live Sandbox
+                    <ScanLine size={12} /> Entorno seguro
                   </div>
                   <div className="absolute bottom-6 left-6 right-6 grid grid-cols-3 gap-3 font-mono text-[10px]">
-                    <Pill label="Network Latency" value="14 ms" />
-                    <Pill label="Active Operators" value="1,024" />
-                    <Pill label="VPN Tunnel" value="STABLE" tone="cyan" />
+                    <Pill label="Retos" value="24/7" />
+                    <Pill label="Categorías" value="7" />
+                    <Pill label="Modalidades" value="CTF + Cursos" tone="cyan" />
                   </div>
                 </div>
               </div>
@@ -87,7 +87,7 @@ export default function LandingPage() {
               <p className="mt-5 text-sm leading-relaxed text-zinc-400">
                 No somos solo una plataforma; somos un colectivo de ingenieros y
                 especialistas en ciberseguridad dedicados a cerrar la brecha
-                entre la academia y la trinchera profesional.
+                entre la teoría académica y la práctica profesional.
               </p>
               <p className="mt-4 text-sm leading-relaxed text-zinc-400">
                 En CyberQuest, transformamos la teoría estática en destreza
@@ -100,7 +100,7 @@ export default function LandingPage() {
               <div className="relative flex h-full min-h-[280px] flex-col items-center justify-center gap-3">
                 <Cpu size={48} className="text-zinc-600" />
                 <span className="font-mono text-[10px] uppercase tracking-[0.32em] text-zinc-500">
-                  Cyber Tactical Infrastructure
+                  Infraestructura de ciberseguridad
                 </span>
               </div>
             </div>
@@ -135,7 +135,7 @@ export default function LandingPage() {
               />
               <SolidCard
                 title="PRÁCTICA PROFESIONAL"
-                description="Bridging the gap between theory and real-world execution."
+                description="Reduce la distancia entre la teoría y la ejecución real."
                 icon={<Briefcase size={18} />}
               />
             </div>
@@ -159,10 +159,10 @@ export default function LandingPage() {
               digitales más valiosos de la sociedad.
             </p>
             <p className="mx-auto mt-4 text-sm text-zinc-500">
-              Nuestra formación se rige en un estricto código de conducta:
+              Nuestra formación se rige por un estricto código de conducta:
               enseñamos a comprender la vulnerabilidad para construir una
-              defensa inexpugnable. El poder es no incidente cuestiona la
-              responsabilidad de proteger lo autónomo.
+              defensa sólida. Todo conocimiento adquirido conlleva la
+              responsabilidad de usarlo de forma ética.
             </p>
             <Link
               href="#"

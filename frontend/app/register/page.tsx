@@ -9,6 +9,8 @@ import Input from "@/components/ui/Input";
 import Button from "@/components/ui/Button";
 import Toast from "@/components/ui/Toast";
 import type { ToastVariant } from "@/components/ui/Toast";
+import { auth as apiAuth, setTokens, ApiError } from "@/lib/api";
+import { useAuth } from "@/lib/auth";
 
 type FormState = {
   fullName: string;
@@ -25,6 +27,7 @@ const CADET_ID_RE = /^CQ-\d{2,4}-[A-Z]+$/i;
 
 export default function RegisterPage() {
   const router = useRouter();
+  const { loadUser } = useAuth();
   const [form, setForm] = useState<FormState>({
     fullName: "",
     email: "",
@@ -79,35 +82,64 @@ export default function RegisterPage() {
     return next;
   }
 
-  function handleSubmit(e: FormEvent<HTMLFormElement>) {
+  async function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const found = validate(form);
     setErrors(found);
 
     if (Object.keys(found).length > 0) {
-      setToast({
-        message: "Hay errores en el formulario.",
-        variant: "error",
-      });
+      setToast({ message: "Hay errores en el formulario.", variant: "error" });
       return;
     }
 
     setSubmitting(true);
-    // Simulación de validación de datos (include "Validar datos")
-    console.info("[CyberQuest] Registro válido (simulado)", {
-      fullName: form.fullName,
-      email: form.email,
-      cadetId: form.cadetId,
-    });
+    try {
+      const tokens = await apiAuth.register({
+        username: form.cadetId.trim(),
+        email: form.email.trim(),
+        password: form.password,
+        display_name: form.fullName.trim(),
+      });
 
-    window.setTimeout(() => {
-      setSubmitting(false);
+      setTokens(tokens.access_token, tokens.refresh_token);
+      await loadUser();
       setToast({
         message: "Cuenta creada exitosamente. Redirigiendo...",
         variant: "success",
       });
-      router.push("/mfa");
-    }, 700);
+      // New competitors always go to /select
+      router.push("/select");
+    } catch (err) {
+      if (err instanceof ApiError) {
+        if (err.status === 409) {
+          const detail = err.detail.toLowerCase();
+          if (detail.includes("email")) {
+            setErrors((prev) => ({
+              ...prev,
+              email: "Este correo ya está registrado.",
+            }));
+            setToast({ message: "El correo ya está en uso.", variant: "error" });
+          } else if (detail.includes("username")) {
+            setErrors((prev) => ({
+              ...prev,
+              cadetId: "Este identificador ya está tomado.",
+            }));
+            setToast({
+              message: "El identificador de cadete ya está en uso.",
+              variant: "error",
+            });
+          } else {
+            setToast({ message: err.detail, variant: "error" });
+          }
+        } else {
+          setToast({ message: err.detail || "Error al crear la cuenta.", variant: "error" });
+        }
+      } else {
+        setToast({ message: "Error de conexión. Intenta de nuevo.", variant: "error" });
+      }
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   return (
@@ -115,17 +147,17 @@ export default function RegisterPage() {
       <div className="flex flex-col gap-6">
         <header className="flex flex-col gap-1">
           <h2 className="text-lg font-semibold text-zinc-100">
-            Create Profile
+            Crear perfil
           </h2>
-          <p className="text-sm text-zinc-500">Enter your credentials.</p>
+          <p className="text-sm text-zinc-500">Ingresa tus datos para registrarte.</p>
         </header>
 
         <form noValidate onSubmit={handleSubmit} className="flex flex-col gap-5">
           <Input
-            label="Full Name"
+            label="Nombre completo"
             type="text"
             autoComplete="name"
-            placeholder="Enter your full name"
+            placeholder="Ingresa tu nombre completo"
             icon={<User size={16} />}
             value={form.fullName}
             onChange={(e) => update("fullName", e.target.value)}
@@ -134,10 +166,10 @@ export default function RegisterPage() {
           />
 
           <Input
-            label="Institutional Email"
+            label="Correo institucional"
             type="email"
             autoComplete="email"
-            placeholder="name@institution.edu"
+            placeholder="nombre@institucion.edu"
             icon={<Mail size={16} />}
             value={form.email}
             onChange={(e) => update("email", e.target.value)}
@@ -146,7 +178,7 @@ export default function RegisterPage() {
           />
 
           <Input
-            label="Cadet ID"
+            label="Identificador de cadete"
             type="text"
             placeholder="CQ-990-ALPHA"
             icon={<IdCard size={16} />}
@@ -158,7 +190,7 @@ export default function RegisterPage() {
 
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             <Input
-              label="Password"
+              label="Contraseña"
               type="password"
               autoComplete="new-password"
               placeholder="••••••••"
@@ -169,7 +201,7 @@ export default function RegisterPage() {
               required
             />
             <Input
-              label="Confirm"
+              label="Confirmar"
               type="password"
               autoComplete="new-password"
               placeholder="••••••••"
@@ -182,7 +214,7 @@ export default function RegisterPage() {
           </div>
 
           <Button type="submit" fullWidth disabled={submitting}>
-            {submitting ? "Creando cuenta..." : "Create Account"}
+            {submitting ? "Creando cuenta..." : "Crear cuenta"}
             {!submitting && <ArrowRight size={16} />}
           </Button>
 
